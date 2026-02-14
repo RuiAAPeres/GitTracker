@@ -11,14 +11,9 @@ struct SettingsView: View {
                     Label("Projects", systemImage: "folder")
                 }
 
-            ThresholdSettingsTab(store: store)
+            RulesSettingsTab(store: store)
                 .tabItem {
-                    Label("Thresholds", systemImage: "slider.horizontal.3")
-                }
-
-            AlertsSettingsTab(store: store)
-                .tabItem {
-                    Label("Alerts", systemImage: "bell")
+                    Label("Rules", systemImage: "slider.horizontal.3")
                 }
         }
         .padding(.horizontal, 18)
@@ -323,7 +318,7 @@ private struct ProjectsSettingsTab: View {
     }
 }
 
-private struct ThresholdSettingsTab: View {
+private struct RulesSettingsTab: View {
     @ObservedObject var store: AppStore
 
     var body: some View {
@@ -338,16 +333,7 @@ private struct ThresholdSettingsTab: View {
                 Text("Default values are +200 / -200 / total 300.")
                 Text("Projects can override these values from the Projects tab.")
             }
-        }
-        .formStyle(.grouped)
-    }
-}
 
-private struct AlertsSettingsTab: View {
-    @ObservedObject var store: AppStore
-
-    var body: some View {
-        Form {
             Section("Notifications") {
                 Toggle("Enable breach notifications", isOn: Binding(
                     get: { store.settings.notificationsEnabled },
