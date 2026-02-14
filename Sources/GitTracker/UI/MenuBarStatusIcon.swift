@@ -1,5 +1,9 @@
 import AppKit
 
+enum MenuBarPalette {
+    static let warning = NSColor.systemYellow
+}
+
 enum MenuBarStatusIcon {
     @MainActor
     static func image(breached: Bool) -> NSImage {
@@ -15,7 +19,7 @@ enum MenuBarStatusIcon {
 
         let statusSymbolName = breached ? "exclamationmark.triangle.fill" : "checkmark.circle.fill"
         let statusColor: NSColor = breached
-            ? NSColor(calibratedRed: 0.84, green: 0.58, blue: 0.02, alpha: 1.0)
+            ? MenuBarPalette.warning
             : .systemGreen
         let statusBase = NSImage(systemSymbolName: statusSymbolName, accessibilityDescription: nil) ?? NSImage()
         let statusConfigured = statusBase.withSymbolConfiguration(.init(pointSize: 10, weight: .bold)) ?? statusBase

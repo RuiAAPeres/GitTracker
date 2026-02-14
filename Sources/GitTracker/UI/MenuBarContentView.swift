@@ -120,8 +120,13 @@ struct MenuBarContentView: View {
     }
 
     private func projectAttributedTitle(for row: ProjectRow) -> AttributedString {
-        let marker = row.isBreached ? "⚠︎" : "•"
-        var title = AttributedString("\(marker) \(row.name)  ")
+        var marker = AttributedString(row.isBreached ? "⚠︎" : "•")
+        if row.isBreached {
+            marker.foregroundColor = Color(nsColor: MenuBarPalette.warning)
+        }
+
+        let markerSpacer = AttributedString(" ")
+        let title = AttributedString("\(row.name)  ")
 
         var plus = AttributedString("+\(row.addedLines)")
         plus.foregroundColor = .green
@@ -131,11 +136,13 @@ struct MenuBarContentView: View {
         var minus = AttributedString("-\(row.removedLines)")
         minus.foregroundColor = .red
 
-        title.append(plus)
-        title.append(spacer)
-        title.append(minus)
+        marker.append(markerSpacer)
+        marker.append(title)
+        marker.append(plus)
+        marker.append(spacer)
+        marker.append(minus)
 
-        return title
+        return marker
     }
 
     private func lastCommitText(for date: Date?) -> String {
