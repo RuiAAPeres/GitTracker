@@ -5,7 +5,7 @@ struct MenuBarContentView: View {
     @ObservedObject var store: AppStore
 
     private var summaryText: String {
-        "\(store.breachedCount) breached / \(store.projectRows.count) tracked"
+        "Tracked \(store.projectRows.count) • Breaching \(store.breachedCount)"
     }
 
     private var breachingRows: [ProjectRow] {
@@ -14,6 +14,10 @@ struct MenuBarContentView: View {
 
     private var healthyRows: [ProjectRow] {
         store.projectRows.filter { !$0.isBreached }
+    }
+
+    private var shouldShowSectionHeaders: Bool {
+        !breachingRows.isEmpty && !healthyRows.isEmpty
     }
 
     var body: some View {
@@ -33,9 +37,11 @@ struct MenuBarContentView: View {
                 .foregroundStyle(.secondary)
         } else {
             if !breachingRows.isEmpty {
-                Text("Breaching (\(breachingRows.count))")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(.secondary)
+                if shouldShowSectionHeaders {
+                    Text("Breaching")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                }
 
                 ForEach(breachingRows) { row in
                     projectMenuRow(row)
@@ -47,9 +53,11 @@ struct MenuBarContentView: View {
                     Divider()
                 }
 
-                Text("OK (\(healthyRows.count))")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(.secondary)
+                if shouldShowSectionHeaders {
+                    Text("OK")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                }
 
                 ForEach(healthyRows) { row in
                     projectMenuRow(row)
@@ -91,7 +99,7 @@ struct MenuBarContentView: View {
         }
         .help("\(row.path)\n\(statusText(for: row.status))")
 
-        Text("   Last commit: \(lastCommitText(for: row.lastCommitAt))")
+        Text("Last commit: \(lastCommitText(for: row.lastCommitAt))")
             .font(.system(size: 10))
             .foregroundStyle(.secondary)
     }
