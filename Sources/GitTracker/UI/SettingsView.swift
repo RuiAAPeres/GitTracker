@@ -30,6 +30,9 @@ private struct ProjectsSettingsTab: View {
     @State private var rawInput = ""
     @State private var editingSpec: ProjectSpec?
     @State private var pathSuggestions: [String] = []
+    @State private var selectedSuggestionIndex: Int?
+    @State private var keyEventMonitor: Any?
+    @FocusState private var inputIsFocused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -39,8 +42,10 @@ private struct ProjectsSettingsTab: View {
             HStack(spacing: 8) {
                 TextField("/path/to/repo or /path/to/root/*", text: $rawInput)
                     .textFieldStyle(.roundedBorder)
+                    .focused($inputIsFocused)
                     .onChange(of: rawInput) { _, updated in
                         pathSuggestions = PathSuggestionEngine.suggestions(for: updated)
+                        selectedSuggestionIndex = pathSuggestions.isEmpty ? nil : 0
                     }
                 Button("Add") {
                     addProjectUsingInputOrPicker()
@@ -51,9 +56,14 @@ private struct ProjectsSettingsTab: View {
             if !pathSuggestions.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
                     ForEach(pathSuggestions, id: \.self) { suggestion in
+                        let index = pathSuggestions.firstIndex(of: suggestion)
+                        let isSelected = index == selectedSuggestionIndex
+
                         Button {
                             rawInput = suggestion
                             pathSuggestions = PathSuggestionEngine.suggestions(for: suggestion)
+                            selectedSuggestionIndex = pathSuggestions.isEmpty ? nil : 0
+                            inputIsFocused = true
                         } label: {
                             HStack(spacing: 8) {
                                 Image(systemName: suggestion.hasSuffix("/*") ? "folder.badge.gearshape" : "folder")
@@ -63,6 +73,14 @@ private struct ProjectsSettingsTab: View {
                                     .font(.system(size: 12, design: .monospaced))
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.vertical, 4)
+                            .padding(.horizontal, 6)
+                            .background(
+                                isSelected
+                                    ? Color.accentColor.opacity(0.20)
+                                    : Color.clear,
+                                in: RoundedRectangle(cornerRadius: 6)
+                            )
                         }
                         .buttonStyle(.plain)
                     }
@@ -127,6 +145,12 @@ private struct ProjectsSettingsTab: View {
                 }
             )
         }
+        .onAppear {
+            installKeyboardMonitorIfNeeded()
+        }
+        .onDisappear {
+            removeKeyboardMonitor()
+        }
     }
 
     private func addProjectUsingInputOrPicker() {
@@ -139,6 +163,7 @@ private struct ProjectsSettingsTab: View {
             store.addProject(from: path)
             rawInput = ""
             pathSuggestions = []
+            selectedSuggestionIndex = nil
             return
         }
 
@@ -146,6 +171,7 @@ private struct ProjectsSettingsTab: View {
         store.addProject(from: resolved)
         rawInput = ""
         pathSuggestions = []
+        selectedSuggestionIndex = nil
     }
 
     private func pickFolderPath() -> String? {
@@ -156,6 +182,79 @@ private struct ProjectsSettingsTab: View {
         panel.canCreateDirectories = false
         panel.prompt = "Select Folder"
         return panel.runModal() == .OK ? panel.url?.path : nil
+    }
+
+    private func installKeyboardMonitorIfNeeded() {
+        guard keyEventMonitor == nil else {
+            return
+        }
+
+        keyEventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            if shouldHandleKeyEvent(event) {
+                return nil
+            }
+            return event
+        }
+    }
+
+    private func removeKeyboardMonitor() {
+        guard let keyEventMonitor else {
+            return
+        }
+        NSEvent.removeMonitor(keyEventMonitor)
+        self.keyEventMonitor = nil
+    }
+
+    private func shouldHandleKeyEvent(_ event: NSEvent) -> Bool {
+        guard inputIsFocused, !pathSuggestions.isEmpty else {
+            return false
+        }
+
+        let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        if modifiers.contains(.command) || modifiers.contains(.control) || modifiers.contains(.option) {
+            return false
+        }
+
+        switch Int(event.keyCode) {
+        case 125: // down
+            moveSelection(step: 1)
+            return true
+        case 126: // up
+            moveSelection(step: -1)
+            return true
+        case 48, 36: // tab, return
+            autocompleteSelection()
+            return true
+        case 53: // escape
+            selectedSuggestionIndex = nil
+            return true
+        default:
+            return false
+        }
+    }
+
+    private func moveSelection(step: Int) {
+        guard !pathSuggestions.isEmpty else {
+            selectedSuggestionIndex = nil
+            return
+        }
+
+        let current = selectedSuggestionIndex ?? 0
+        let newIndex = max(0, min(pathSuggestions.count - 1, current + step))
+        selectedSuggestionIndex = newIndex
+    }
+
+    private func autocompleteSelection() {
+        guard !pathSuggestions.isEmpty else {
+            return
+        }
+        let index = selectedSuggestionIndex ?? 0
+        guard pathSuggestions.indices.contains(index) else {
+            return
+        }
+        rawInput = pathSuggestions[index]
+        pathSuggestions = PathSuggestionEngine.suggestions(for: rawInput)
+        selectedSuggestionIndex = pathSuggestions.isEmpty ? nil : 0
     }
 }
 
