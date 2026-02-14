@@ -25,16 +25,8 @@ struct MenuBarContentView: View {
                 .foregroundStyle(.secondary)
         } else {
             ForEach(store.projectRows) { row in
-                Button {
+                Button(projectTitle(for: row)) {
                     store.revealProjectInFinder(path: row.path)
-                } label: {
-                    HStack(spacing: 8) {
-                        Text(row.isBreached ? "⚠︎" : "•")
-                        Text(row.name)
-                        Spacer(minLength: 10)
-                        Text("+\(row.addedLines) -\(row.removedLines)")
-                            .monospacedDigit()
-                    }
                 }
                 .help("\(row.path)\n\(statusText(for: row.status))")
             }
@@ -78,6 +70,12 @@ struct MenuBarContentView: View {
         case .error(let message):
             return "Error: \(message)"
         }
+    }
+
+    private func projectTitle(for row: ProjectRow) -> String {
+        let marker = row.isBreached ? "⚠︎" : "•"
+        let counts = "+\(row.addedLines) -\(row.removedLines)"
+        return "\(marker) \(row.name)  \(counts)"
     }
 
     private func openSettingsWindow() {
