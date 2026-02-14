@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 struct MenuBarContentView: View {
     @ObservedObject var store: AppStore
@@ -52,9 +53,10 @@ struct MenuBarContentView: View {
         }
         .disabled(store.isRefreshing)
 
-        SettingsLink {
-            Text("Open Settings…")
+        Button("Open Settings…") {
+            openSettingsWindow()
         }
+        .keyboardShortcut(",", modifiers: [.command])
 
         Divider()
 
@@ -76,5 +78,10 @@ struct MenuBarContentView: View {
         case .error(let message):
             return "Error: \(message)"
         }
+    }
+
+    private func openSettingsWindow() {
+        NSApp.activate(ignoringOtherApps: true)
+        NotificationCenter.default.post(name: .gitTrackerOpenSettings, object: nil)
     }
 }

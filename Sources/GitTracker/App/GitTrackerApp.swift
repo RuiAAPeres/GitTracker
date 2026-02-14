@@ -12,6 +12,12 @@ struct GitTrackerApp: App {
     }
 
     var body: some Scene {
+        WindowGroup("GitTrackerLifecycleKeepalive") {
+            HiddenWindowView()
+        }
+        .defaultSize(width: 20, height: 20)
+        .windowStyle(.hiddenTitleBar)
+
         MenuBarExtra {
             MenuBarContentView(store: store)
         } label: {
