@@ -26,6 +26,8 @@ struct SettingsView: View {
 }
 
 private struct ProjectsSettingsTab: View {
+    private let suggestionLimit = 200
+
     @ObservedObject var store: AppStore
     @State private var rawInput = ""
     @State private var editingSpec: ProjectSpec?
@@ -44,8 +46,7 @@ private struct ProjectsSettingsTab: View {
                     .textFieldStyle(.roundedBorder)
                     .focused($inputIsFocused)
                     .onChange(of: rawInput) { _, updated in
-                        pathSuggestions = PathSuggestionEngine.suggestions(for: updated)
-                        selectedSuggestionIndex = pathSuggestions.isEmpty ? nil : 0
+                        refreshSuggestions(for: updated)
                     }
                 Button("Add") {
                     addProjectUsingInputOrPicker()
@@ -54,37 +55,38 @@ private struct ProjectsSettingsTab: View {
             }
 
             if !pathSuggestions.isEmpty {
-                VStack(alignment: .leading, spacing: 6) {
-                    ForEach(pathSuggestions, id: \.self) { suggestion in
-                        let index = pathSuggestions.firstIndex(of: suggestion)
-                        let isSelected = index == selectedSuggestionIndex
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 6) {
+                        ForEach(Array(pathSuggestions.enumerated()), id: \.offset) { index, suggestion in
+                            let isSelected = index == selectedSuggestionIndex
 
-                        Button {
-                            rawInput = suggestion
-                            pathSuggestions = PathSuggestionEngine.suggestions(for: suggestion)
-                            selectedSuggestionIndex = pathSuggestions.isEmpty ? nil : 0
-                            inputIsFocused = true
-                        } label: {
-                            HStack(spacing: 8) {
-                                Image(systemName: suggestion.hasSuffix("/*") ? "folder.badge.gearshape" : "folder")
-                                    .foregroundStyle(.secondary)
-                                Text(suggestion)
-                                    .lineLimit(1)
-                                    .font(.system(size: 12, design: .monospaced))
+                            Button {
+                                rawInput = suggestion
+                                refreshSuggestions(for: suggestion)
+                                inputIsFocused = true
+                            } label: {
+                                HStack(spacing: 8) {
+                                    Image(systemName: suggestion.hasSuffix("/*") ? "folder.badge.gearshape" : "folder")
+                                        .foregroundStyle(.secondary)
+                                    Text(suggestion)
+                                        .lineLimit(1)
+                                        .font(.system(size: 12, design: .monospaced))
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.vertical, 4)
+                                .padding(.horizontal, 6)
+                                .background(
+                                    isSelected
+                                        ? Color.accentColor.opacity(0.20)
+                                        : Color.clear,
+                                    in: RoundedRectangle(cornerRadius: 6)
+                                )
                             }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.vertical, 4)
-                            .padding(.horizontal, 6)
-                            .background(
-                                isSelected
-                                    ? Color.accentColor.opacity(0.20)
-                                    : Color.clear,
-                                in: RoundedRectangle(cornerRadius: 6)
-                            )
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
                     }
                 }
+                .frame(maxHeight: 190)
                 .padding(10)
                 .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 8))
             }
@@ -134,6 +136,9 @@ private struct ProjectsSettingsTab: View {
                 .font(.footnote)
                 .foregroundStyle(.secondary)
             Text("Tip: leave input empty and click Add to open the native folder picker.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            Text("Use ↑/↓ to navigate suggestions, Tab/Enter to autocomplete, Shift+Enter to add.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }
@@ -206,7 +211,7 @@ private struct ProjectsSettingsTab: View {
     }
 
     private func shouldHandleKeyEvent(_ event: NSEvent) -> Bool {
-        guard inputIsFocused, !pathSuggestions.isEmpty else {
+        guard inputIsFocused else {
             return false
         }
 
@@ -216,13 +221,22 @@ private struct ProjectsSettingsTab: View {
         }
 
         switch Int(event.keyCode) {
+        case 36 where modifiers.contains(.shift): // return + shift
+            addProjectUsingInputOrPicker()
+            return true
+        case 76 where modifiers.contains(.shift): // keypad enter + shift
+            addProjectUsingInputOrPicker()
+            return true
         case 125: // down
+            guard !pathSuggestions.isEmpty else { return false }
             moveSelection(step: 1)
             return true
         case 126: // up
+            guard !pathSuggestions.isEmpty else { return false }
             moveSelection(step: -1)
             return true
-        case 48, 36: // tab, return
+        case 48, 36, 76: // tab, return, enter
+            guard !pathSuggestions.isEmpty else { return false }
             autocompleteSelection()
             return true
         case 53: // escape
@@ -253,7 +267,14 @@ private struct ProjectsSettingsTab: View {
             return
         }
         rawInput = pathSuggestions[index]
-        pathSuggestions = PathSuggestionEngine.suggestions(for: rawInput)
+        refreshSuggestions(for: rawInput)
+    }
+
+    private func refreshSuggestions(for input: String) {
+        pathSuggestions = PathSuggestionEngine.suggestions(for: input, limit: suggestionLimit)
+        if let selectedSuggestionIndex, pathSuggestions.indices.contains(selectedSuggestionIndex) {
+            return
+        }
         selectedSuggestionIndex = pathSuggestions.isEmpty ? nil : 0
     }
 }
