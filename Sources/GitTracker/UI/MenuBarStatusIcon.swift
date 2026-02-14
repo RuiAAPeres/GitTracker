@@ -1,15 +1,16 @@
 import AppKit
 
 enum MenuBarStatusIcon {
+    @MainActor
     static func image(breached: Bool) -> NSImage {
         let size = NSSize(width: 19, height: 16)
         let image = NSImage(size: size)
         image.lockFocus()
         defer { image.unlockFocus() }
 
-        let folderBase = NSImage(systemSymbolName: "folder", accessibilityDescription: nil) ?? NSImage()
+        let folderBase = NSImage(systemSymbolName: "folder.fill", accessibilityDescription: nil) ?? NSImage()
         let folderConfigured = folderBase.withSymbolConfiguration(.init(pointSize: 13, weight: .semibold)) ?? folderBase
-        let folder = folderConfigured.tinted(with: .labelColor)
+        let folder = folderConfigured.tinted(with: folderTintColor())
         folder.draw(in: NSRect(x: 0, y: 1, width: 14, height: 14))
 
         let statusSymbolName = breached ? "exclamationmark.triangle.fill" : "checkmark.circle.fill"
@@ -21,6 +22,15 @@ enum MenuBarStatusIcon {
 
         image.isTemplate = false
         return image
+    }
+
+    @MainActor
+    private static func folderTintColor() -> NSColor {
+        let appearance = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua])
+        if appearance == .darkAqua {
+            return NSColor.white.withAlphaComponent(0.9)
+        }
+        return NSColor.black.withAlphaComponent(0.75)
     }
 }
 
