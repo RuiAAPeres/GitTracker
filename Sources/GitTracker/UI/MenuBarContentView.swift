@@ -73,10 +73,11 @@ struct MenuBarContentView: View {
             if store.isRefreshing {
                 Text("Refreshing…")
             } else {
-                Text("Refresh now")
+                Text("Refresh")
             }
         }
         .disabled(store.isRefreshing)
+        .keyboardShortcut("r", modifiers: [.command])
 
         Button("Open Settings…") {
             openSettingsWindow()

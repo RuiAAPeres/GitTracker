@@ -2,6 +2,9 @@
 
 GitTracker is a native macOS menu bar app for tracking per-project uncommitted git line deltas (`+++`/`---`) and alerting when thresholds are exceeded.
 
+## Screenshot
+![GitTracker menu screenshot](assets/git_tracker.png)
+
 ## Features
 - Track exact project folders.
 - Track wildcard roots (`folder/*`) to include immediate child git repositories.

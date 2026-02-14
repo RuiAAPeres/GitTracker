@@ -1,7 +1,7 @@
 import AppKit
 
 enum MenuBarPalette {
-    static let warning = NSColor.systemYellow
+    static let warning = NSColor(calibratedRed: 0.78, green: 0.62, blue: 0.00, alpha: 1.0)
 }
 
 enum MenuBarStatusIcon {
