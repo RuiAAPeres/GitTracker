@@ -73,7 +73,7 @@ final class AppStore: ObservableObject {
     }
 
     var menuTitle: String {
-        breachedCount > 0 ? "!\(breachedCount)" : "GT"
+        "GT"
     }
 
     var projectRows: [ProjectRow] {
