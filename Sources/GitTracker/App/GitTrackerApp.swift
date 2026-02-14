@@ -3,11 +3,11 @@ import SwiftUI
 @main
 struct GitTrackerApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
-    @ObservedObject private var store: AppStore
+    @StateObject private var store: AppStore
 
     init() {
         let liveStore = AppStore.live()
-        self.store = liveStore
+        _store = StateObject(wrappedValue: liveStore)
         Task { await liveStore.startIfNeeded() }
     }
 
