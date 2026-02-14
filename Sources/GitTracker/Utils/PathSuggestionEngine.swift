@@ -79,6 +79,22 @@ struct PathSuggestionEngine {
         return trimmed
     }
 
+    static func inputAfterAcceptingSuggestion(_ suggestion: String, descendIntoDirectory: Bool) -> String {
+        guard descendIntoDirectory else {
+            return suggestion
+        }
+        if suggestion.hasSuffix("/*") {
+            return suggestion
+        }
+
+        let normalized = PathNormalizer.normalize(suggestion)
+        var isDirectory: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: normalized, isDirectory: &isDirectory), isDirectory.boolValue else {
+            return suggestion
+        }
+        return normalized.hasSuffix("/") ? normalized : normalized + "/"
+    }
+
     private static func splitBaseAndQuery(from expandedInput: String, originalInput: String) -> (baseDirectory: String, query: String) {
         if expandedInput.hasSuffix("/") {
             return (expandedInput, "")

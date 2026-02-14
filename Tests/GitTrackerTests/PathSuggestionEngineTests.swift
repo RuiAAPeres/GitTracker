@@ -35,6 +35,18 @@ struct PathSuggestionEngineTests {
         #expect(normalizedSuggestions.contains(normalizedPath(child.path)))
     }
 
+    @Test
+    func acceptingDirectorySuggestionWithDescendAddsTrailingSlash() throws {
+        let root = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let directory = root.appendingPathComponent("repo")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+
+        let input = PathSuggestionEngine.inputAfterAcceptingSuggestion(directory.path, descendIntoDirectory: true)
+        #expect(input.hasSuffix("/"))
+    }
+
     private func makeTempDirectory() throws -> URL {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("gittracker-suggest-tests-\(UUID().uuidString)")

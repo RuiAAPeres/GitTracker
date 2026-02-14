@@ -261,9 +261,13 @@ private struct ProjectsSettingsTab: View {
             guard !pathSuggestions.isEmpty else { return false }
             moveSelection(step: -1)
             return true
-        case 48, 36, 76: // tab, return, enter
+        case 48: // tab
             guard !pathSuggestions.isEmpty else { return false }
-            autocompleteSelection()
+            autocompleteSelection(descendIntoDirectory: false)
+            return true
+        case 36, 76: // return, enter
+            guard !pathSuggestions.isEmpty else { return false }
+            autocompleteSelection(descendIntoDirectory: true)
             return true
         case 53: // escape
             selectedSuggestionIndex = nil
@@ -284,7 +288,7 @@ private struct ProjectsSettingsTab: View {
         selectedSuggestionIndex = newIndex
     }
 
-    private func autocompleteSelection() {
+    private func autocompleteSelection(descendIntoDirectory: Bool) {
         guard !pathSuggestions.isEmpty else {
             return
         }
@@ -292,7 +296,10 @@ private struct ProjectsSettingsTab: View {
         guard pathSuggestions.indices.contains(index) else {
             return
         }
-        rawInput = pathSuggestions[index]
+        rawInput = PathSuggestionEngine.inputAfterAcceptingSuggestion(
+            pathSuggestions[index],
+            descendIntoDirectory: descendIntoDirectory
+        )
         refreshSuggestions(for: rawInput)
     }
 
