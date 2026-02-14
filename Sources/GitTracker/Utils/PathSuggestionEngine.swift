@@ -13,7 +13,7 @@ struct PathSuggestionEngine {
             return []
         }
 
-        let expandedInput = PathNormalizer.normalize(searchInput)
+        let expandedInput = normalizedInputPreservingDirectoryIntent(searchInput)
         let (baseDirectory, query) = splitBaseAndQuery(from: expandedInput, originalInput: searchInput)
 
         var isDirectory: ObjCBool = false
@@ -126,6 +126,15 @@ struct PathSuggestionEngine {
 
         let parent = URL(fileURLWithPath: expanded).deletingLastPathComponent().path
         return parent
+    }
+
+    private static func normalizedInputPreservingDirectoryIntent(_ input: String) -> String {
+        let normalized = PathNormalizer.normalize(input)
+        let hadTrailingSlash = input.hasSuffix("/")
+        if hadTrailingSlash, !normalized.hasSuffix("/"), normalized != "/" {
+            return normalized + "/"
+        }
+        return normalized
     }
 
     private static func fuzzyScore(candidate: String, query: String) -> Int? {
