@@ -21,7 +21,9 @@ struct SettingsView: View {
                     Label("Alerts", systemImage: "bell")
                 }
         }
-        .padding(16)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 14)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 }
 
@@ -38,119 +40,134 @@ private struct ProjectsSettingsTab: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Track folders")
-                .font(.title3.weight(.semibold))
+            GroupBox("Track folders") {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(spacing: 8) {
+                        TextField("/path/to/repo or /path/to/root/*", text: $rawInput)
+                            .textFieldStyle(.roundedBorder)
+                            .focused($inputIsFocused)
+                            .frame(maxWidth: .infinity)
+                            .onChange(of: rawInput) { _, updated in
+                                refreshSuggestions(for: updated)
+                            }
 
-            HStack(spacing: 8) {
-                TextField("/path/to/repo or /path/to/root/*", text: $rawInput)
-                    .textFieldStyle(.roundedBorder)
-                    .focused($inputIsFocused)
-                    .onChange(of: rawInput) { _, updated in
-                        refreshSuggestions(for: updated)
+                        Button("Choose…") {
+                            guard let path = pickFolderPath() else {
+                                return
+                            }
+                            rawInput = path
+                            refreshSuggestions(for: path)
+                            inputIsFocused = true
+                        }
+                        .buttonStyle(.bordered)
+                        .fixedSize()
+
+                        Button("Add") {
+                            addProjectUsingInputOrPicker()
+                        }
+                        .keyboardShortcut(.return, modifiers: [.command])
+                        .buttonStyle(.borderedProminent)
+                        .fixedSize()
                     }
-                Button("Add") {
-                    addProjectUsingInputOrPicker()
-                }
-                .keyboardShortcut(.return, modifiers: [.command])
-            }
 
-            if !pathSuggestions.isEmpty {
-                ScrollViewReader { proxy in
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 6) {
-                            ForEach(Array(pathSuggestions.enumerated()), id: \.offset) { index, suggestion in
-                                let isSelected = index == selectedSuggestionIndex
+                    if !pathSuggestions.isEmpty {
+                        ScrollViewReader { proxy in
+                            ScrollView {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    ForEach(Array(pathSuggestions.enumerated()), id: \.offset) { index, suggestion in
+                                        let isSelected = index == selectedSuggestionIndex
 
-                                Button {
-                                    rawInput = suggestion
-                                    refreshSuggestions(for: suggestion)
-                                    inputIsFocused = true
-                                } label: {
-                                    HStack(spacing: 8) {
-                                        Image(systemName: suggestion.hasSuffix("/*") ? "folder.badge.gearshape" : "folder")
-                                            .foregroundStyle(.secondary)
-                                        Text(suggestion)
-                                            .lineLimit(1)
-                                            .font(.system(size: 12, design: .monospaced))
+                                        Button {
+                                            rawInput = suggestion
+                                            refreshSuggestions(for: suggestion)
+                                            inputIsFocused = true
+                                        } label: {
+                                            HStack(spacing: 8) {
+                                                Image(systemName: suggestion.hasSuffix("/*") ? "folder.badge.gearshape" : "folder")
+                                                    .foregroundStyle(.secondary)
+                                                Text(suggestion)
+                                                    .lineLimit(1)
+                                                    .font(.system(size: 12, design: .monospaced))
+                                            }
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                            .padding(.vertical, 4)
+                                            .padding(.horizontal, 6)
+                                            .background(
+                                                isSelected
+                                                    ? Color.accentColor.opacity(0.20)
+                                                    : Color.clear,
+                                                in: RoundedRectangle(cornerRadius: 6)
+                                            )
+                                        }
+                                        .buttonStyle(.plain)
+                                        .id(index)
                                     }
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .padding(.vertical, 4)
-                                    .padding(.horizontal, 6)
-                                    .background(
-                                        isSelected
-                                            ? Color.accentColor.opacity(0.20)
-                                            : Color.clear,
-                                        in: RoundedRectangle(cornerRadius: 6)
-                                    )
                                 }
-                                .buttonStyle(.plain)
-                                .id(index)
+                            }
+                            .onChange(of: selectedSuggestionIndex) { _, newValue in
+                                guard let newValue else { return }
+                                withAnimation(.easeOut(duration: 0.12)) {
+                                    proxy.scrollTo(newValue, anchor: .center)
+                                }
                             }
                         }
+                        .frame(maxHeight: 190)
+                        .padding(8)
+                        .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 8))
                     }
-                    .onChange(of: selectedSuggestionIndex) { _, newValue in
-                        guard let newValue else { return }
-                        withAnimation(.easeOut(duration: 0.12)) {
-                            proxy.scrollTo(newValue, anchor: .center)
-                        }
-                    }
+
+                    Text("↑/↓ navigate, Tab/Enter autocomplete, Shift+Enter add. Use `folder/*` for child repos.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .padding(.leading, 2)
                 }
-                .frame(maxHeight: 190)
-                .padding(10)
-                .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 8))
+                .padding(.top, 2)
             }
 
-            List {
-                ForEach(store.settings.projectSpecs) { spec in
-                    HStack(spacing: 12) {
-                        Toggle("", isOn: Binding(
-                            get: { spec.enabled },
-                            set: { store.setProjectEnabled(id: spec.id, enabled: $0) }
-                        ))
-                        .labelsHidden()
+            GroupBox("Tracked folders (\(store.settings.projectSpecs.count))") {
+                List {
+                    ForEach(store.settings.projectSpecs) { spec in
+                        HStack(spacing: 12) {
+                            Toggle("", isOn: Binding(
+                                get: { spec.enabled },
+                                set: { store.setProjectEnabled(id: spec.id, enabled: $0) }
+                            ))
+                            .labelsHidden()
 
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(spec.input.displayValue)
-                                .font(.system(size: 12, design: .monospaced))
-                                .lineLimit(1)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(spec.input.displayValue)
+                                    .font(.system(size: 12, design: .monospaced))
+                                    .lineLimit(1)
 
-                            TextField(
-                                "Optional display name",
-                                text: Binding(
-                                    get: { spec.nameOverride ?? "" },
-                                    set: { store.setProjectNameOverride(id: spec.id, nameOverride: $0) }
+                                TextField(
+                                    "Optional display name",
+                                    text: Binding(
+                                        get: { spec.nameOverride ?? "" },
+                                        set: { store.setProjectNameOverride(id: spec.id, nameOverride: $0) }
+                                    )
                                 )
-                            )
-                            .textFieldStyle(.roundedBorder)
-                        }
+                                .textFieldStyle(.roundedBorder)
+                            }
 
-                        Spacer(minLength: 8)
+                            Spacer(minLength: 8)
 
-                        Button("Override…") {
-                            editingSpec = spec
-                        }
+                            Button("Override…") {
+                                editingSpec = spec
+                            }
 
-                        Button(role: .destructive) {
-                            store.removeProject(id: spec.id)
-                        } label: {
-                            Image(systemName: "trash")
+                            Button(role: .destructive) {
+                                store.removeProject(id: spec.id)
+                            } label: {
+                                Image(systemName: "trash")
+                            }
+                            .buttonStyle(.borderless)
                         }
-                        .buttonStyle(.borderless)
                     }
                 }
+                .frame(minHeight: 210, maxHeight: .infinity)
             }
-            .frame(minHeight: 280)
-
-            Text("Use `folder/*` to track direct child repositories under that folder.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-            Text("Tip: leave input empty and click Add to open the native folder picker.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-            Text("Use ↑/↓ to navigate suggestions, Tab/Enter to autocomplete, Shift+Enter to add.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .sheet(item: $editingSpec) { spec in
             ProjectOverrideSheet(
                 spec: spec,
@@ -292,20 +309,19 @@ private struct ThresholdSettingsTab: View {
     @ObservedObject var store: AppStore
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            Text("Global thresholds")
-                .font(.title3.weight(.semibold))
-
-            ThresholdEditor(rule: store.settings.globalThreshold) { updated in
-                store.setGlobalThreshold(updated)
+        Form {
+            Section("Global thresholds") {
+                ThresholdEditor(rule: store.settings.globalThreshold) { updated in
+                    store.setGlobalThreshold(updated)
+                }
             }
 
-            Text("Default values are +200 / -200 / total 300.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-
-            Spacer()
+            Section("Info") {
+                Text("Default values are +200 / -200 / total 300.")
+                Text("Projects can override these values from the Projects tab.")
+            }
         }
+        .formStyle(.grouped)
     }
 }
 
@@ -313,16 +329,16 @@ private struct AlertsSettingsTab: View {
     @ObservedObject var store: AppStore
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            Toggle("Enable breach notifications", isOn: Binding(
-                get: { store.settings.notificationsEnabled },
-                set: { store.setNotificationsEnabled($0) }
-            ))
+        Form {
+            Section("Notifications") {
+                Toggle("Enable breach notifications", isOn: Binding(
+                    get: { store.settings.notificationsEnabled },
+                    set: { store.setNotificationsEnabled($0) }
+                ))
+                Text("Notifications trigger only when a project transitions from non-breached to breached.")
+            }
 
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Refresh interval")
-                    .font(.headline)
-
+            Section("Refresh") {
                 Picker("Refresh interval", selection: Binding(
                     get: { store.settings.refreshInterval },
                     set: { store.setRefreshInterval($0) }
@@ -335,12 +351,11 @@ private struct AlertsSettingsTab: View {
                 .pickerStyle(.menu)
             }
 
-            Text("Notifications trigger only when a project transitions from non-breached to breached.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-
-            Spacer()
+            Section("Current status") {
+                Text("\(store.breachedCount) breached / \(store.projectRows.count) tracked")
+            }
         }
+        .formStyle(.grouped)
     }
 }
 
