@@ -8,6 +8,11 @@ enum MenuBarStatusIcon {
         image.lockFocus()
         defer { image.unlockFocus() }
 
+        let iconBackgroundRect = NSRect(x: 0, y: 1, width: 14, height: 14)
+        let iconBackgroundPath = NSBezierPath(roundedRect: iconBackgroundRect, xRadius: 4, yRadius: 4)
+        NSColor.black.withAlphaComponent(0.24).setFill()
+        iconBackgroundPath.fill()
+
         let folderBase = NSImage(systemSymbolName: "folder.fill", accessibilityDescription: nil) ?? NSImage()
         let folderConfigured = folderBase.withSymbolConfiguration(.init(pointSize: 13, weight: .semibold)) ?? folderBase
         let folder = folderConfigured.tinted(with: folderTintColor())
@@ -26,11 +31,7 @@ enum MenuBarStatusIcon {
 
     @MainActor
     private static func folderTintColor() -> NSColor {
-        let appearance = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua])
-        if appearance == .darkAqua {
-            return NSColor.white.withAlphaComponent(0.9)
-        }
-        return NSColor.black.withAlphaComponent(0.75)
+        NSColor.white.withAlphaComponent(0.95)
     }
 }
 
