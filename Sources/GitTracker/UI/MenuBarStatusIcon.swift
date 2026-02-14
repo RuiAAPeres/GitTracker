@@ -12,21 +12,21 @@ enum MenuBarStatusIcon {
         let folder = folderConfigured.tinted(with: .labelColor)
         folder.draw(in: NSRect(x: 0, y: 1, width: 14, height: 14))
 
-        let badgeRect = NSRect(x: 10, y: 0, width: 9, height: 9)
-        let badgePath = NSBezierPath(ovalIn: badgeRect)
-        (breached ? NSColor.systemYellow : NSColor.systemGreen).setFill()
-        badgePath.fill()
+        let badgeBackgroundRect = NSRect(x: 9.5, y: -0.5, width: 10, height: 10)
+        let badgeBackgroundPath = NSBezierPath(ovalIn: badgeBackgroundRect)
+        NSColor.windowBackgroundColor.setFill()
+        badgeBackgroundPath.fill()
 
         NSColor.windowBackgroundColor.setStroke()
-        badgePath.lineWidth = 1
-        badgePath.stroke()
+        badgeBackgroundPath.lineWidth = 1
+        badgeBackgroundPath.stroke()
 
-        let glyphName = breached ? "exclamationmark" : "checkmark"
-        let glyphBase = NSImage(systemSymbolName: glyphName, accessibilityDescription: nil) ?? NSImage()
-        let glyphConfigured = glyphBase.withSymbolConfiguration(.init(pointSize: 6, weight: .black)) ?? glyphBase
-        let glyphColor: NSColor = breached ? .black : .white
-        let glyph = glyphConfigured.tinted(with: glyphColor)
-        glyph.draw(in: badgeRect.insetBy(dx: 1.5, dy: 1.5))
+        let statusSymbolName = breached ? "exclamationmark.triangle.fill" : "checkmark.circle.fill"
+        let statusColor: NSColor = breached ? .systemYellow : .systemGreen
+        let statusBase = NSImage(systemSymbolName: statusSymbolName, accessibilityDescription: nil) ?? NSImage()
+        let statusConfigured = statusBase.withSymbolConfiguration(.init(pointSize: 9, weight: .bold)) ?? statusBase
+        let status = statusConfigured.tinted(with: statusColor)
+        status.draw(in: NSRect(x: 10, y: 0, width: 9, height: 9))
 
         image.isTemplate = false
         return image
