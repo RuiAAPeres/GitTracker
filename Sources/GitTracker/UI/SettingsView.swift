@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct SettingsView: View {
@@ -28,6 +29,7 @@ private struct ProjectsSettingsTab: View {
     @ObservedObject var store: AppStore
     @State private var rawInput = ""
     @State private var editingSpec: ProjectSpec?
+    @State private var pathSuggestions: [String] = []
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -37,11 +39,36 @@ private struct ProjectsSettingsTab: View {
             HStack(spacing: 8) {
                 TextField("/path/to/repo or /path/to/root/*", text: $rawInput)
                     .textFieldStyle(.roundedBorder)
+                    .onChange(of: rawInput) { _, updated in
+                        pathSuggestions = PathSuggestionEngine.suggestions(for: updated)
+                    }
                 Button("Add") {
-                    store.addProject(from: rawInput)
-                    rawInput = ""
+                    addProjectUsingInputOrPicker()
                 }
                 .keyboardShortcut(.return, modifiers: [.command])
+            }
+
+            if !pathSuggestions.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(pathSuggestions, id: \.self) { suggestion in
+                        Button {
+                            rawInput = suggestion
+                            pathSuggestions = PathSuggestionEngine.suggestions(for: suggestion)
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: suggestion.hasSuffix("/*") ? "folder.badge.gearshape" : "folder")
+                                    .foregroundStyle(.secondary)
+                                Text(suggestion)
+                                    .lineLimit(1)
+                                    .font(.system(size: 12, design: .monospaced))
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(10)
+                .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 8))
             }
 
             List {
@@ -88,6 +115,9 @@ private struct ProjectsSettingsTab: View {
             Text("Use `folder/*` to track direct child repositories under that folder.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
+            Text("Tip: leave input empty and click Add to open the native folder picker.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
         }
         .sheet(item: $editingSpec) { spec in
             ProjectOverrideSheet(
@@ -97,6 +127,35 @@ private struct ProjectsSettingsTab: View {
                 }
             )
         }
+    }
+
+    private func addProjectUsingInputOrPicker() {
+        let trimmed = rawInput.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if trimmed.isEmpty {
+            guard let path = pickFolderPath() else {
+                return
+            }
+            store.addProject(from: path)
+            rawInput = ""
+            pathSuggestions = []
+            return
+        }
+
+        let resolved = PathSuggestionEngine.resolvedInputForAdd(rawInput: trimmed, suggestions: pathSuggestions)
+        store.addProject(from: resolved)
+        rawInput = ""
+        pathSuggestions = []
+    }
+
+    private func pickFolderPath() -> String? {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.allowsMultipleSelection = false
+        panel.canCreateDirectories = false
+        panel.prompt = "Select Folder"
+        return panel.runModal() == .OK ? panel.url?.path : nil
     }
 }
 
