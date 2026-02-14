@@ -4,23 +4,24 @@ struct MenuBarLabelView: View {
     @ObservedObject var store: AppStore
 
     var body: some View {
-        ZStack(alignment: .topTrailing) {
+        ZStack(alignment: .bottomTrailing) {
             Image(systemName: "folder.fill")
                 .symbolRenderingMode(.hierarchical)
                 .foregroundStyle(.primary)
 
-            if store.breachedCount > 0 {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .symbolRenderingMode(.palette)
-                    .foregroundStyle(.yellow, .yellow)
-                    .font(.system(size: 8, weight: .bold))
-                    .background(
-                        Circle()
-                            .fill(Color(nsColor: .windowBackgroundColor))
-                            .frame(width: 10, height: 10)
-                    )
-                    .offset(x: 4, y: -4)
-            }
+            Circle()
+                .fill(store.breachedCount > 0 ? Color(nsColor: .systemYellow) : Color(nsColor: .systemGreen))
+                .frame(width: 10, height: 10)
+                .overlay {
+                    Image(systemName: store.breachedCount > 0 ? "exclamationmark" : "checkmark")
+                        .font(.system(size: 7, weight: .bold))
+                        .foregroundStyle(store.breachedCount > 0 ? .black : .white)
+                }
+                .overlay {
+                    Circle()
+                        .stroke(Color(nsColor: .windowBackgroundColor), lineWidth: 1)
+                }
+                .offset(x: 4, y: 3)
         }
     }
 }
