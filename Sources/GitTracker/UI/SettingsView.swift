@@ -51,21 +51,32 @@ private struct ProjectsSettingsTab: View {
                                 refreshSuggestions(for: updated)
                             }
 
-                        Button("Choose…") {
+                        Button {
                             guard let path = pickFolderPath() else {
                                 return
                             }
                             rawInput = path
                             refreshSuggestions(for: path)
                             inputIsFocused = true
+                        } label: {
+                            Image(systemName: "folder.badge.plus")
+                                .font(.system(size: 14, weight: .semibold))
                         }
                         .buttonStyle(.bordered)
-                        .fixedSize()
+                        .frame(width: 36)
+                        .help("Choose folder")
 
-                        Button("Add") {
+                        Button {
                             addProjectUsingInputOrPicker()
+                        } label: {
+                            HStack(spacing: 6) {
+                                Text("Add")
+                                Text("⇧↩")
+                                    .font(.caption2.monospaced())
+                                    .foregroundStyle(.secondary)
+                            }
                         }
-                        .keyboardShortcut(.return, modifiers: [.command])
+                        .keyboardShortcut(.return, modifiers: [.shift])
                         .buttonStyle(.borderedProminent)
                         .fixedSize()
                     }
