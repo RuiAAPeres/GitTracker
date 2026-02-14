@@ -55,34 +55,43 @@ private struct ProjectsSettingsTab: View {
             }
 
             if !pathSuggestions.isEmpty {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 6) {
-                        ForEach(Array(pathSuggestions.enumerated()), id: \.offset) { index, suggestion in
-                            let isSelected = index == selectedSuggestionIndex
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 6) {
+                            ForEach(Array(pathSuggestions.enumerated()), id: \.offset) { index, suggestion in
+                                let isSelected = index == selectedSuggestionIndex
 
-                            Button {
-                                rawInput = suggestion
-                                refreshSuggestions(for: suggestion)
-                                inputIsFocused = true
-                            } label: {
-                                HStack(spacing: 8) {
-                                    Image(systemName: suggestion.hasSuffix("/*") ? "folder.badge.gearshape" : "folder")
-                                        .foregroundStyle(.secondary)
-                                    Text(suggestion)
-                                        .lineLimit(1)
-                                        .font(.system(size: 12, design: .monospaced))
+                                Button {
+                                    rawInput = suggestion
+                                    refreshSuggestions(for: suggestion)
+                                    inputIsFocused = true
+                                } label: {
+                                    HStack(spacing: 8) {
+                                        Image(systemName: suggestion.hasSuffix("/*") ? "folder.badge.gearshape" : "folder")
+                                            .foregroundStyle(.secondary)
+                                        Text(suggestion)
+                                            .lineLimit(1)
+                                            .font(.system(size: 12, design: .monospaced))
+                                    }
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(.vertical, 4)
+                                    .padding(.horizontal, 6)
+                                    .background(
+                                        isSelected
+                                            ? Color.accentColor.opacity(0.20)
+                                            : Color.clear,
+                                        in: RoundedRectangle(cornerRadius: 6)
+                                    )
                                 }
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.vertical, 4)
-                                .padding(.horizontal, 6)
-                                .background(
-                                    isSelected
-                                        ? Color.accentColor.opacity(0.20)
-                                        : Color.clear,
-                                    in: RoundedRectangle(cornerRadius: 6)
-                                )
+                                .buttonStyle(.plain)
+                                .id(index)
                             }
-                            .buttonStyle(.plain)
+                        }
+                    }
+                    .onChange(of: selectedSuggestionIndex) { _, newValue in
+                        guard let newValue else { return }
+                        withAnimation(.easeOut(duration: 0.12)) {
+                            proxy.scrollTo(newValue, anchor: .center)
                         }
                     }
                 }
