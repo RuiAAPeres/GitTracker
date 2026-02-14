@@ -3,15 +3,15 @@ import AppKit
 enum MenuBarStatusIcon {
     @MainActor
     static func image(breached: Bool) -> NSImage {
-        let size = NSSize(width: 19, height: 16)
+        let size = NSSize(width: 22, height: 18)
         let image = NSImage(size: size)
         image.lockFocus()
         defer { image.unlockFocus() }
 
         let folderBase = NSImage(systemSymbolName: "folder.fill", accessibilityDescription: nil) ?? NSImage()
-        let folderConfigured = folderBase.withSymbolConfiguration(.init(pointSize: 13, weight: .semibold)) ?? folderBase
+        let folderConfigured = folderBase.withSymbolConfiguration(.init(pointSize: 16, weight: .semibold)) ?? folderBase
         let folder = folderConfigured.tinted(with: folderTintColor())
-        drawAspectFit(folder, in: NSRect(x: 0, y: 1, width: 14, height: 14))
+        drawAspectFit(folder, in: NSRect(x: 0, y: 0.5, width: 16, height: 16))
 
         let statusSymbolName = breached ? "exclamationmark.triangle.fill" : "checkmark.circle.fill"
         let statusColor: NSColor = breached
@@ -20,7 +20,7 @@ enum MenuBarStatusIcon {
         let statusBase = NSImage(systemSymbolName: statusSymbolName, accessibilityDescription: nil) ?? NSImage()
         let statusConfigured = statusBase.withSymbolConfiguration(.init(pointSize: 10, weight: .bold)) ?? statusBase
         let status = statusConfigured.tinted(with: statusColor)
-        drawAspectFit(status, in: NSRect(x: 9, y: -1, width: 11, height: 11))
+        drawAspectFit(status, in: NSRect(x: 11, y: -0.5, width: 11, height: 11))
 
         image.isTemplate = false
         return image
