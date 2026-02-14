@@ -9,7 +9,7 @@ struct AlertEvaluatorTests {
 
         let spec = ProjectSpec(input: .exact(path: "/tmp/repo"))
         let project = ResolvedProject(sourceSpecID: spec.id, name: "repo", path: "/tmp/repo", isGitRepo: true)
-        let metrics = ProjectMetrics(projectPath: "/tmp/repo", addedLines: 250, removedLines: 10, status: .ok, lastUpdatedAt: Date())
+        let metrics = ProjectMetrics(projectPath: "/tmp/repo", addedLines: 250, removedLines: 10, status: .ok, lastCommitAt: nil, lastUpdatedAt: Date())
 
         let result = evaluator.evaluate(
             projects: [project],
@@ -31,7 +31,7 @@ struct AlertEvaluatorTests {
         let override = ThresholdRule(maxAddedLines: 500, maxRemovedLines: 500, maxTotalDelta: 700)
         let spec = ProjectSpec(input: .exact(path: "/tmp/repo"), thresholdOverride: override)
         let project = ResolvedProject(sourceSpecID: spec.id, name: "repo", path: "/tmp/repo", isGitRepo: true)
-        let metrics = ProjectMetrics(projectPath: "/tmp/repo", addedLines: 250, removedLines: 10, status: .ok, lastUpdatedAt: Date())
+        let metrics = ProjectMetrics(projectPath: "/tmp/repo", addedLines: 250, removedLines: 10, status: .ok, lastCommitAt: nil, lastUpdatedAt: Date())
 
         let result = evaluator.evaluate(
             projects: [project],
@@ -52,7 +52,7 @@ struct AlertEvaluatorTests {
 
         let spec = ProjectSpec(input: .exact(path: "/tmp/repo"))
         let project = ResolvedProject(sourceSpecID: spec.id, name: "repo", path: "/tmp/repo", isGitRepo: true)
-        let metrics = ProjectMetrics(projectPath: "/tmp/repo", addedLines: 250, removedLines: 10, status: .ok, lastUpdatedAt: Date())
+        let metrics = ProjectMetrics(projectPath: "/tmp/repo", addedLines: 250, removedLines: 10, status: .ok, lastCommitAt: nil, lastUpdatedAt: Date())
 
         let first = evaluator.evaluate(
             projects: [project],

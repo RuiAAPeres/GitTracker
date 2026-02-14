@@ -83,6 +83,7 @@ final class AppStore: ObservableObject {
                 addedLines: 0,
                 removedLines: 0,
                 status: .pathUnavailable,
+                lastCommitAt: nil,
                 lastUpdatedAt: Date()
             )
             let isBreached = alertStates[project.path]?.isBreached == true
@@ -92,6 +93,7 @@ final class AppStore: ObservableObject {
                 addedLines: metrics.addedLines,
                 removedLines: metrics.removedLines,
                 status: metrics.status,
+                lastCommitAt: metrics.lastCommitAt,
                 isBreached: isBreached
             )
         }.sorted {

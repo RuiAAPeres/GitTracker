@@ -144,6 +144,7 @@ struct ProjectMetrics: Identifiable, Hashable, Sendable {
     var addedLines: Int
     var removedLines: Int
     var status: MetricsStatus
+    var lastCommitAt: Date?
     var lastUpdatedAt: Date
 
     var totalDelta: Int {
@@ -218,5 +219,6 @@ struct ProjectRow: Identifiable, Hashable, Sendable {
     var addedLines: Int
     var removedLines: Int
     var status: MetricsStatus
+    var lastCommitAt: Date?
     var isBreached: Bool
 }

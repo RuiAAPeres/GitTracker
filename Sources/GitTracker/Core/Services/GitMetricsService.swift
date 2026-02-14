@@ -21,6 +21,7 @@ actor GitMetricsService: GitMetricsFetching {
                 addedLines: 0,
                 removedLines: 0,
                 status: .gitUnavailable,
+                lastCommitAt: nil,
                 lastUpdatedAt: Date()
             )
         }
@@ -32,6 +33,7 @@ actor GitMetricsService: GitMetricsFetching {
                 addedLines: 0,
                 removedLines: 0,
                 status: .pathUnavailable,
+                lastCommitAt: nil,
                 lastUpdatedAt: Date()
             )
         }
@@ -47,6 +49,7 @@ actor GitMetricsService: GitMetricsFetching {
                 addedLines: 0,
                 removedLines: 0,
                 status: .notRepo,
+                lastCommitAt: nil,
                 lastUpdatedAt: Date()
             )
         }
@@ -64,16 +67,19 @@ actor GitMetricsService: GitMetricsFetching {
                 addedLines: 0,
                 removedLines: 0,
                 status: .error(message.isEmpty ? "unknown git error" : message),
+                lastCommitAt: nil,
                 lastUpdatedAt: Date()
             )
         }
 
         let (addedLines, removedLines) = Self.parseNumstat(diffResult.stdout)
+        let lastCommitAt = fetchLastCommitDate(for: project.path)
         return ProjectMetrics(
             projectPath: project.path,
             addedLines: addedLines,
             removedLines: removedLines,
             status: .ok,
+            lastCommitAt: lastCommitAt,
             lastUpdatedAt: Date()
         )
     }
@@ -106,5 +112,22 @@ actor GitMetricsService: GitMetricsFetching {
         }
 
         return (added, removed)
+    }
+
+    private func fetchLastCommitDate(for projectPath: String) -> Date? {
+        let result = commandRunner.run(
+            "/usr/bin/env",
+            arguments: ["git", "-C", projectPath, "log", "-1", "--format=%ct"],
+            timeout: 5
+        )
+        guard result.exitCode == 0, !result.timedOut else {
+            return nil
+        }
+
+        let trimmed = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let epochSeconds = TimeInterval(trimmed) else {
+            return nil
+        }
+        return Date(timeIntervalSince1970: epochSeconds)
     }
 }
