@@ -27,7 +27,8 @@ struct GitTrackerApp: App {
 
         Settings {
             SettingsView(store: store)
-                .frame(width: 760, height: 540)
         }
+        .defaultSize(width: 820, height: 560)
+        .windowResizability(.contentSize)
     }
 }
