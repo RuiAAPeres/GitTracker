@@ -12,7 +12,7 @@ enum MenuBarStatusIcon {
         let folder = folderConfigured.tinted(with: .labelColor)
         folder.draw(in: NSRect(x: 0, y: 1, width: 14, height: 14))
 
-        let badgeBackgroundRect = NSRect(x: 9.5, y: -0.5, width: 10, height: 10)
+        let badgeBackgroundRect = NSRect(x: 9, y: -1, width: 11, height: 11)
         let badgeBackgroundPath = NSBezierPath(ovalIn: badgeBackgroundRect)
         NSColor.windowBackgroundColor.setFill()
         badgeBackgroundPath.fill()
@@ -21,12 +21,25 @@ enum MenuBarStatusIcon {
         badgeBackgroundPath.lineWidth = 1
         badgeBackgroundPath.stroke()
 
-        let statusSymbolName = breached ? "exclamationmark.triangle.fill" : "checkmark.circle.fill"
-        let statusColor: NSColor = breached ? .systemYellow : .systemGreen
-        let statusBase = NSImage(systemSymbolName: statusSymbolName, accessibilityDescription: nil) ?? NSImage()
-        let statusConfigured = statusBase.withSymbolConfiguration(.init(pointSize: 9, weight: .bold)) ?? statusBase
-        let status = statusConfigured.tinted(with: statusColor)
-        status.draw(in: NSRect(x: 10, y: 0, width: 9, height: 9))
+        let badgeRect = NSRect(x: 9.5, y: -0.5, width: 10, height: 10)
+        let badgePath = NSBezierPath(ovalIn: badgeRect)
+        let badgeColor: NSColor = breached ? .systemYellow : .systemGreen
+        badgeColor.setFill()
+        badgePath.fill()
+
+        let glyph = breached ? "!" : "✓"
+        let glyphAttributes: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: 8, weight: .black),
+            .foregroundColor: breached ? NSColor.black : NSColor.white
+        ]
+        let glyphSize = glyph.size(withAttributes: glyphAttributes)
+        let glyphRect = NSRect(
+            x: badgeRect.midX - (glyphSize.width / 2),
+            y: badgeRect.midY - (glyphSize.height / 2) - 0.2,
+            width: glyphSize.width,
+            height: glyphSize.height
+        )
+        glyph.draw(in: glyphRect, withAttributes: glyphAttributes)
 
         image.isTemplate = false
         return image
