@@ -56,7 +56,7 @@ struct ProjectResolver: ProjectResolving {
     }
 
     private func expandPath(_ path: String) -> String {
-        (path as NSString).expandingTildeInPath
+        PathNormalizer.normalize(path, fileManager: fileManager)
     }
 
     private func immediateChildDirectories(at rootPath: String) -> [String]? {

@@ -60,6 +60,7 @@ final class AppStore: ObservableObject {
         }
         hasStarted = true
         settings = settingsRepository.load()
+        normalizeProjectSpecPathsIfNeeded()
         if settings.notificationsEnabled {
             await notificationService.requestAuthorizationIfNeeded()
         }
@@ -170,7 +171,7 @@ final class AppStore: ObservableObject {
     }
 
     func addProject(from rawInput: String) {
-        let trimmed = rawInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmed = PathNormalizer.normalize(rawInput.trimmingCharacters(in: .whitespacesAndNewlines))
         guard !trimmed.isEmpty else {
             return
         }
@@ -257,6 +258,31 @@ final class AppStore: ObservableObject {
     private func persistSettingsAndRefreshLoop() {
         settingsRepository.save(settings)
         restartRefreshLoop()
+    }
+
+    private func normalizeProjectSpecPathsIfNeeded() {
+        var normalizedSpecs: [ProjectSpec] = []
+        normalizedSpecs.reserveCapacity(settings.projectSpecs.count)
+
+        for var spec in settings.projectSpecs {
+            switch spec.input {
+            case .exact(let path):
+                spec.input = .exact(path: PathNormalizer.normalize(path))
+            case .childrenOf(let path):
+                spec.input = .childrenOf(path: PathNormalizer.normalize(path))
+            }
+
+            if normalizedSpecs.contains(where: { $0.input == spec.input }) {
+                continue
+            }
+            normalizedSpecs.append(spec)
+        }
+
+        guard normalizedSpecs != settings.projectSpecs else {
+            return
+        }
+        settings.projectSpecs = normalizedSpecs
+        settingsRepository.save(settings)
     }
 
     private func restartRefreshLoop() {

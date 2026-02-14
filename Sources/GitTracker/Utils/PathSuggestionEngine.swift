@@ -13,7 +13,7 @@ struct PathSuggestionEngine {
             return []
         }
 
-        let expandedInput = (searchInput as NSString).expandingTildeInPath
+        let expandedInput = PathNormalizer.normalize(searchInput)
         let (baseDirectory, query) = splitBaseAndQuery(from: expandedInput, originalInput: searchInput)
 
         var isDirectory: ObjCBool = false
@@ -100,7 +100,7 @@ struct PathSuggestionEngine {
     }
 
     private static func pathExists(for input: String) -> Bool {
-        let path = (input as NSString).expandingTildeInPath
+        let path = PathNormalizer.normalize(input)
         let nonWildcardPath: String
         if path.hasSuffix("/*") {
             nonWildcardPath = String(path.dropLast(2))
@@ -113,7 +113,7 @@ struct PathSuggestionEngine {
     private static func normalizeFilePathToDirectory(_ input: String) -> String {
         let hasWildcardSuffix = input.hasSuffix("/*")
         let pathWithoutWildcard = hasWildcardSuffix ? String(input.dropLast(2)) : input
-        let expanded = (pathWithoutWildcard as NSString).expandingTildeInPath
+        let expanded = PathNormalizer.normalize(pathWithoutWildcard)
 
         var isDirectory: ObjCBool = false
         guard FileManager.default.fileExists(atPath: expanded, isDirectory: &isDirectory) else {
