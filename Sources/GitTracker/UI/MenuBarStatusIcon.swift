@@ -11,14 +11,14 @@ enum MenuBarStatusIcon {
         let folderBase = NSImage(systemSymbolName: "folder.fill", accessibilityDescription: nil) ?? NSImage()
         let folderConfigured = folderBase.withSymbolConfiguration(.init(pointSize: 13, weight: .semibold)) ?? folderBase
         let folder = folderConfigured.tinted(with: folderTintColor())
-        folder.draw(in: NSRect(x: 0, y: 1, width: 14, height: 14))
+        drawAspectFit(folder, in: NSRect(x: 0, y: 1, width: 14, height: 14))
 
         let statusSymbolName = breached ? "exclamationmark.triangle.fill" : "checkmark.circle.fill"
         let statusColor: NSColor = breached ? .systemYellow : .systemGreen
         let statusBase = NSImage(systemSymbolName: statusSymbolName, accessibilityDescription: nil) ?? NSImage()
         let statusConfigured = statusBase.withSymbolConfiguration(.init(pointSize: 10, weight: .bold)) ?? statusBase
         let status = statusConfigured.tinted(with: statusColor)
-        status.draw(in: NSRect(x: 9, y: -1, width: 11, height: 11))
+        drawAspectFit(status, in: NSRect(x: 9, y: -1, width: 11, height: 11))
 
         image.isTemplate = false
         return image
@@ -27,6 +27,23 @@ enum MenuBarStatusIcon {
     @MainActor
     private static func folderTintColor() -> NSColor {
         NSColor.black.withAlphaComponent(0.82)
+    }
+
+    private static func drawAspectFit(_ image: NSImage, in rect: NSRect) {
+        guard image.size.width > 0, image.size.height > 0 else {
+            return
+        }
+
+        let scale = min(rect.width / image.size.width, rect.height / image.size.height)
+        let width = image.size.width * scale
+        let height = image.size.height * scale
+        let target = NSRect(
+            x: rect.midX - (width / 2),
+            y: rect.midY - (height / 2),
+            width: width,
+            height: height
+        )
+        image.draw(in: target)
     }
 }
 
