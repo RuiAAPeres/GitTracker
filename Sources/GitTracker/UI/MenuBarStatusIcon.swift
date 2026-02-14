@@ -14,7 +14,9 @@ enum MenuBarStatusIcon {
         drawAspectFit(folder, in: NSRect(x: 0, y: 1, width: 14, height: 14))
 
         let statusSymbolName = breached ? "exclamationmark.triangle.fill" : "checkmark.circle.fill"
-        let statusColor: NSColor = breached ? .systemYellow : .systemGreen
+        let statusColor: NSColor = breached
+            ? NSColor(calibratedRed: 0.84, green: 0.58, blue: 0.02, alpha: 1.0)
+            : .systemGreen
         let statusBase = NSImage(systemSymbolName: statusSymbolName, accessibilityDescription: nil) ?? NSImage()
         let statusConfigured = statusBase.withSymbolConfiguration(.init(pointSize: 10, weight: .bold)) ?? statusBase
         let status = statusConfigured.tinted(with: statusColor)
