@@ -8,6 +8,14 @@ struct MenuBarContentView: View {
         "\(store.breachedCount) breached / \(store.projectRows.count) tracked"
     }
 
+    private var breachingRows: [ProjectRow] {
+        store.projectRows.filter(\.isBreached)
+    }
+
+    private var healthyRows: [ProjectRow] {
+        store.projectRows.filter { !$0.isBreached }
+    }
+
     var body: some View {
         Text(summaryText)
             .font(.system(size: 12, weight: .semibold))
@@ -24,13 +32,28 @@ struct MenuBarContentView: View {
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
         } else {
-            ForEach(store.projectRows) { row in
-                Button {
-                    store.revealProjectInFinder(path: row.path)
-                } label: {
-                    Text(projectAttributedTitle(for: row))
+            if !breachingRows.isEmpty {
+                Text("Breaching (\(breachingRows.count))")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.secondary)
+
+                ForEach(breachingRows) { row in
+                    projectMenuRow(row)
                 }
-                .help("\(row.path)\n\(statusText(for: row.status))")
+            }
+
+            if !healthyRows.isEmpty {
+                if !breachingRows.isEmpty {
+                    Divider()
+                }
+
+                Text("OK (\(healthyRows.count))")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.secondary)
+
+                ForEach(healthyRows) { row in
+                    projectMenuRow(row)
+                }
             }
         }
 
@@ -57,6 +80,20 @@ struct MenuBarContentView: View {
         Button("Quit") {
             NSApplication.shared.terminate(nil)
         }
+    }
+
+    @ViewBuilder
+    private func projectMenuRow(_ row: ProjectRow) -> some View {
+        Button {
+            store.revealProjectInFinder(path: row.path)
+        } label: {
+            Text(projectAttributedTitle(for: row))
+        }
+        .help("\(row.path)\n\(statusText(for: row.status))")
+
+        Text("   Last commit: \(lastCommitText(for: row.lastCommitAt))")
+            .font(.system(size: 10))
+            .foregroundStyle(.secondary)
     }
 
     private func statusText(for status: MetricsStatus) -> String {
@@ -91,6 +128,13 @@ struct MenuBarContentView: View {
         title.append(minus)
 
         return title
+    }
+
+    private func lastCommitText(for date: Date?) -> String {
+        guard let date else {
+            return "unavailable"
+        }
+        return date.formatted(.dateTime.year().month(.abbreviated).day().hour().minute())
     }
 
     private func openSettingsWindow() {
