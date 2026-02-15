@@ -1,4 +1,5 @@
 import AppKit
+import Foundation
 import SwiftUI
 
 struct SettingsView: View {
@@ -31,11 +32,12 @@ private struct ProjectsSettingsTab: View {
     @State private var pathSuggestions: [String] = []
     @State private var selectedSuggestionIndex: Int?
     @State private var keyEventMonitor: Any?
+    @State private var selectedSpecID: UUID?
     @FocusState private var inputIsFocused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            GroupBox("Track folders") {
+            SettingsSectionCard("Track folders") {
                 VStack(alignment: .leading, spacing: 10) {
                     HStack(spacing: 8) {
                         TextField("/path/to/repo or /path/to/root/*", text: $rawInput)
@@ -117,61 +119,26 @@ private struct ProjectsSettingsTab: View {
                                 }
                             }
                         }
-                        .frame(maxHeight: 190)
+                        .frame(maxHeight: 160)
                         .padding(8)
-                        .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 8))
+                        .background(.quaternary.opacity(0.30), in: RoundedRectangle(cornerRadius: 8))
                     }
 
-                    Text("↑/↓ navigate, Tab/Enter autocomplete, Shift+Enter add. Use `folder/*` for child repos.")
-                        .font(.footnote)
+                    Text("Use `folder/*` to track immediate child repositories.")
+                        .font(.system(size: 12))
                         .foregroundStyle(.secondary)
-                        .padding(.leading, 2)
+                        .padding(.leading, 1)
                 }
-                .padding(.top, 2)
             }
 
-            GroupBox("Tracked folders (\(store.settings.projectSpecs.count))") {
-                List {
-                    ForEach(store.settings.projectSpecs) { spec in
-                        HStack(spacing: 12) {
-                            Toggle("", isOn: Binding(
-                                get: { spec.enabled },
-                                set: { store.setProjectEnabled(id: spec.id, enabled: $0) }
-                            ))
-                            .labelsHidden()
+            HStack(alignment: .top, spacing: 14) {
+                trackedSourcesSidebar
+                    .frame(width: 290)
 
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(spec.input.displayValue)
-                                    .font(.system(size: 12, design: .monospaced))
-                                    .lineLimit(1)
-
-                                TextField(
-                                    "Optional display name",
-                                    text: Binding(
-                                        get: { spec.nameOverride ?? "" },
-                                        set: { store.setProjectNameOverride(id: spec.id, nameOverride: $0) }
-                                    )
-                                )
-                                .textFieldStyle(.roundedBorder)
-                            }
-
-                            Spacer(minLength: 8)
-
-                            Button("Override…") {
-                                editingSpec = spec
-                            }
-
-                            Button(role: .destructive) {
-                                store.removeProject(id: spec.id)
-                            } label: {
-                                Image(systemName: "trash")
-                            }
-                            .buttonStyle(.borderless)
-                        }
-                    }
-                }
-                .frame(minHeight: 210, maxHeight: .infinity)
+                projectDashboard
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
+            .frame(maxHeight: .infinity)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .sheet(item: $editingSpec) { spec in
@@ -184,9 +151,21 @@ private struct ProjectsSettingsTab: View {
         }
         .onAppear {
             installKeyboardMonitorIfNeeded()
+            selectInitialSpecIfNeeded()
+            preloadSelectedInsightsIfNeeded()
         }
         .onDisappear {
             removeKeyboardMonitor()
+        }
+        .onChange(of: store.settings.projectSpecs) { _, _ in
+            selectInitialSpecIfNeeded()
+            preloadSelectedInsightsIfNeeded()
+        }
+        .onChange(of: selectedSpecID) { _, _ in
+            preloadSelectedInsightsIfNeeded()
+        }
+        .onChange(of: store.resolvedProjects) { _, _ in
+            preloadSelectedInsightsIfNeeded()
         }
     }
 
@@ -315,6 +294,319 @@ private struct ProjectsSettingsTab: View {
             return
         }
         selectedSuggestionIndex = pathSuggestions.isEmpty ? nil : 0
+    }
+
+    @ViewBuilder
+    private var trackedSourcesSidebar: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("Tracked")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .textCase(.uppercase)
+                Spacer()
+                Text("\(store.settings.projectSpecs.count)")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.secondary)
+            }
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(store.settings.projectSpecs) { spec in
+                        sourceRow(spec)
+                    }
+                }
+            }
+        }
+        .padding(12)
+        .background(.quaternary.opacity(0.28), in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    @ViewBuilder
+    private var projectDashboard: some View {
+        if let selectedSpec = selectedSpec {
+            let summary = summary(for: selectedSpec)
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    SettingsSectionCard("Selected source") {
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack(alignment: .center, spacing: 10) {
+                                Circle()
+                                    .fill(summary.breachedRepoCount > 0 ? Color(nsColor: MenuBarPalette.warning) : Color(nsColor: MenuBarPalette.success))
+                                    .frame(width: 8, height: 8)
+
+                                Text(sourceTitle(for: selectedSpec))
+                                    .font(.system(size: 18, weight: .semibold))
+                                Spacer()
+                                Toggle("Enabled", isOn: Binding(
+                                    get: { selectedSpec.enabled },
+                                    set: { store.setProjectEnabled(id: selectedSpec.id, enabled: $0) }
+                                ))
+                                .toggleStyle(.switch)
+                                .labelsHidden()
+                            }
+
+                            Text(selectedSpec.input.displayValue)
+                                .font(.system(size: 12, design: .monospaced))
+                                .foregroundStyle(.secondary)
+
+                            TextField(
+                                "Optional display name",
+                                text: Binding(
+                                    get: { selectedSpec.nameOverride ?? "" },
+                                    set: { store.setProjectNameOverride(id: selectedSpec.id, nameOverride: $0) }
+                                )
+                            )
+                            .textFieldStyle(.roundedBorder)
+
+                            HStack(spacing: 8) {
+                                Button("Threshold override…") {
+                                    editingSpec = selectedSpec
+                                }
+                                .buttonStyle(.bordered)
+
+                                Button("Reveal in Finder") {
+                                    store.revealProjectInFinder(path: selectedSpec.input.path)
+                                }
+                                .buttonStyle(.bordered)
+
+                                Spacer()
+
+                                Button(role: .destructive) {
+                                    store.removeProject(id: selectedSpec.id)
+                                } label: {
+                                    Label("Remove", systemImage: "trash")
+                                }
+                            }
+                        }
+                    }
+
+                    SettingsSectionCard("Repository metrics") {
+                        LazyVGrid(columns: [.init(.flexible()), .init(.flexible())], spacing: 10) {
+                            metricTile("Repositories", "\(summary.repoCount)", "Detected from this source")
+                            metricTile("Breaching", "\(summary.breachedRepoCount)", "Threshold violations now")
+                            metricTile("Commits (7d)", "\(summary.commits7d)", "Recent velocity")
+                            metricTile("Commits (30d)", "\(summary.commits30d)", "Monthly volume")
+                            metricTile("Avg commit size", "\(summary.avgCommitDelta) lines", "Added + removed")
+                            metricTile("Avg files/commit", summary.avgFilesPerCommitText, "In the last 30 days")
+                            metricTile("Pending delta", "+\(summary.pendingAdded)  -\(summary.pendingRemoved)", "Uncommitted lines")
+                            metricTile("Pending files", "\(summary.pendingFiles)", "Files in working tree")
+                            metricTile("Active days (30d)", "\(summary.avgActiveDaysText)", "Average days with commits")
+                            metricTile("Branches", summary.branchSummary, "Detected heads")
+                        }
+
+                        if summary.loadingRepoCount > 0 {
+                            HStack(spacing: 8) {
+                                ProgressView()
+                                    .controlSize(.small)
+                                Text("Loading detailed metrics for \(summary.loadingRepoCount) repos…")
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding(.top, 6)
+                        }
+                    }
+
+                    SettingsSectionCard("Commit recency") {
+                        HStack {
+                            Text("Most recent commit")
+                                .font(.system(size: 14, weight: .semibold))
+                            Spacer()
+                            Text(summary.lastCommitText)
+                                .font(.system(size: 13))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+        } else {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("No tracked folders yet")
+                    .font(.title3.weight(.semibold))
+                Text("Add a repository path above to see live commit metrics and health.")
+                    .font(.system(size: 13))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(20)
+            .background(.quaternary.opacity(0.20), in: RoundedRectangle(cornerRadius: 12))
+        }
+    }
+
+    private func sourceRow(_ spec: ProjectSpec) -> some View {
+        let isSelected = spec.id == selectedSpecID
+        let summary = summary(for: spec)
+
+        return Button {
+            selectedSpecID = spec.id
+        } label: {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 8) {
+                    Circle()
+                        .fill(summary.breachedRepoCount > 0 ? Color(nsColor: MenuBarPalette.warning) : Color(nsColor: MenuBarPalette.success))
+                        .frame(width: 8, height: 8)
+                    Text(sourceTitle(for: spec))
+                        .font(.system(size: 13, weight: .semibold))
+                        .lineLimit(1)
+                    Spacer()
+                    if !spec.enabled {
+                        Text("Off")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Text(spec.input.displayValue)
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+
+                Text("\(summary.repoCount) repos • \(summary.commits7d) commits / 7d")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background(
+                isSelected ? Color.accentColor.opacity(0.18) : Color.clear,
+                in: RoundedRectangle(cornerRadius: 10)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func metricTile(_ title: String, _ value: String, _ subtitle: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.secondary)
+                .textCase(.uppercase)
+            Text(value)
+                .font(.system(size: 19, weight: .semibold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+            Text(subtitle)
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 8)
+        .padding(.horizontal, 10)
+        .background(.quaternary.opacity(0.24), in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    private var selectedSpec: ProjectSpec? {
+        guard let selectedSpecID else {
+            return store.settings.projectSpecs.first
+        }
+        return store.settings.projectSpecs.first(where: { $0.id == selectedSpecID }) ?? store.settings.projectSpecs.first
+    }
+
+    private func selectInitialSpecIfNeeded() {
+        if let selectedSpecID, store.settings.projectSpecs.contains(where: { $0.id == selectedSpecID }) {
+            return
+        }
+        selectedSpecID = store.settings.projectSpecs.first?.id
+    }
+
+    private func sourceTitle(for spec: ProjectSpec) -> String {
+        if let override = spec.nameOverride, !override.isEmpty {
+            return override
+        }
+        let path = spec.input.path
+        let base = URL(fileURLWithPath: path).lastPathComponent
+        let displayBase = base.isEmpty ? path : base
+        if case .childrenOf = spec.input {
+            return "\(displayBase)/*"
+        }
+        return displayBase
+    }
+
+    private func resolvedProjects(for spec: ProjectSpec) -> [ResolvedProject] {
+        store.resolvedProjects.filter { $0.sourceSpecID == spec.id }
+    }
+
+    private func preloadSelectedInsightsIfNeeded() {
+        guard let selectedSpec else { return }
+        for project in resolvedProjects(for: selectedSpec) {
+            store.loadInsightsIfNeeded(for: project.path)
+        }
+    }
+
+    private func summary(for spec: ProjectSpec) -> ProjectInsightsSummary {
+        let resolved = resolvedProjects(for: spec)
+        let rowByPath = Dictionary(uniqueKeysWithValues: store.projectRows.map { ($0.path, $0) })
+        let rows = resolved.compactMap { rowByPath[$0.path] }
+        let insights = resolved.compactMap { store.projectInsightsByPath[$0.path] }.filter(\.available)
+
+        let commits7d = insights.reduce(0) { $0 + $1.commitsLast7Days }
+        let commits30d = insights.reduce(0) { $0 + $1.commitsLast30Days }
+        let totalCommitDelta30d = insights.reduce(0) { $0 + ($1.averageCommitDeltaLast30Days * $1.commitsLast30Days) }
+        let totalCommitFiles30d = insights.reduce(0.0) { $0 + ($1.averageFilesPerCommitLast30Days * Double($1.commitsLast30Days)) }
+        let totalActiveDays30d = insights.reduce(0) { $0 + $1.activeCommitDaysLast30Days }
+        let avgCommitDelta = commits30d > 0 ? totalCommitDelta30d / commits30d : 0
+        let avgFilesPerCommit = commits30d > 0 ? totalCommitFiles30d / Double(commits30d) : 0
+        let avgActiveDays = insights.isEmpty ? 0 : Double(totalActiveDays30d) / Double(insights.count)
+        let branchNames = Set(insights.compactMap(\.branchName).filter { !$0.isEmpty })
+        let pendingFiles = insights.reduce(0) { $0 + $1.workingTreeChangedFiles }
+
+        return ProjectInsightsSummary(
+            repoCount: resolved.count,
+            breachedRepoCount: rows.filter(\.isBreached).count,
+            commits7d: commits7d,
+            commits30d: commits30d,
+            avgCommitDelta: avgCommitDelta,
+            avgFilesPerCommit: avgFilesPerCommit,
+            avgActiveDays: avgActiveDays,
+            pendingAdded: rows.reduce(0) { $0 + $1.addedLines },
+            pendingRemoved: rows.reduce(0) { $0 + $1.removedLines },
+            pendingFiles: pendingFiles,
+            loadingRepoCount: resolved.filter { store.insightsLoadingPaths.contains($0.path) }.count,
+            lastCommitAt: rows.compactMap(\.lastCommitAt).max(),
+            branchSummary: branchSummary(from: branchNames)
+        )
+    }
+
+    private func branchSummary(from names: Set<String>) -> String {
+        guard !names.isEmpty else {
+            return "Unavailable"
+        }
+        if names.count == 1, let name = names.first {
+            return name
+        }
+        return "\(names.count) branches"
+    }
+
+    private struct ProjectInsightsSummary {
+        var repoCount: Int
+        var breachedRepoCount: Int
+        var commits7d: Int
+        var commits30d: Int
+        var avgCommitDelta: Int
+        var avgFilesPerCommit: Double
+        var avgActiveDays: Double
+        var pendingAdded: Int
+        var pendingRemoved: Int
+        var pendingFiles: Int
+        var loadingRepoCount: Int
+        var lastCommitAt: Date?
+        var branchSummary: String
+
+        var avgFilesPerCommitText: String {
+            String(format: "%.1f", avgFilesPerCommit)
+        }
+
+        var avgActiveDaysText: String {
+            String(format: "%.1f", avgActiveDays)
+        }
+
+        var lastCommitText: String {
+            guard let lastCommitAt else {
+                return "Unavailable"
+            }
+            return lastCommitAt.formatted(.relative(presentation: .named))
+        }
     }
 }
 

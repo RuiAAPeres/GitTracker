@@ -6,6 +6,8 @@ final class AppStore: ObservableObject {
     @Published private(set) var settings: AppSettings
     @Published private(set) var resolvedProjects: [ResolvedProject]
     @Published private(set) var metricsByPath: [String: ProjectMetrics]
+    @Published private(set) var projectInsightsByPath: [String: ProjectInsights]
+    @Published private(set) var insightsLoadingPaths: Set<String>
     @Published private(set) var alertStates: [String: AlertState]
     @Published private(set) var lastRefreshAt: Date?
     @Published private(set) var isRefreshing: Bool
@@ -16,6 +18,7 @@ final class AppStore: ObservableObject {
     private let alertEvaluator: AlertEvaluating
     private let notificationService: NotificationSending
     private let loginItemService: LoginItemManaging
+    private let projectInsightsService: ProjectInsightsFetching
 
     private var refreshTask: Task<Void, Never>?
     private var hasStarted = false
@@ -26,7 +29,8 @@ final class AppStore: ObservableObject {
         gitMetricsService: GitMetricsFetching,
         alertEvaluator: AlertEvaluating,
         notificationService: NotificationSending,
-        loginItemService: LoginItemManaging
+        loginItemService: LoginItemManaging,
+        projectInsightsService: ProjectInsightsFetching
     ) {
         self.settingsRepository = settingsRepository
         self.projectResolver = projectResolver
@@ -34,10 +38,13 @@ final class AppStore: ObservableObject {
         self.alertEvaluator = alertEvaluator
         self.notificationService = notificationService
         self.loginItemService = loginItemService
+        self.projectInsightsService = projectInsightsService
 
         self.settings = .default
         self.resolvedProjects = []
         self.metricsByPath = [:]
+        self.projectInsightsByPath = [:]
+        self.insightsLoadingPaths = []
         self.alertStates = [:]
         self.lastRefreshAt = nil
         self.isRefreshing = false
@@ -54,7 +61,8 @@ final class AppStore: ObservableObject {
             gitMetricsService: GitMetricsService(),
             alertEvaluator: AlertEvaluator(),
             notificationService: NotificationService(),
-            loginItemService: LoginItemService()
+            loginItemService: LoginItemService(),
+            projectInsightsService: ProjectInsightsService()
         )
     }
 
@@ -125,6 +133,9 @@ final class AppStore: ObservableObject {
         let enabledSpecs = settings.projectSpecs.filter(\.enabled)
         let resolved = projectResolver.resolve(specs: enabledSpecs)
         resolvedProjects = resolved
+        let activePaths = Set(resolved.map(\.path))
+        projectInsightsByPath = projectInsightsByPath.filter { activePaths.contains($0.key) }
+        insightsLoadingPaths = Set(insightsLoadingPaths.filter { activePaths.contains($0) })
 
         let chunkedProjects = resolved.chunked(into: 4)
         var newMetrics: [String: ProjectMetrics] = [:]
@@ -272,6 +283,25 @@ final class AppStore: ObservableObject {
             settingsRepository.save(settings)
         } catch {
             return
+        }
+    }
+
+    func loadInsightsIfNeeded(for projectPath: String, force: Bool = false) {
+        if !force, let existing = projectInsightsByPath[projectPath], existing.available {
+            return
+        }
+        guard !insightsLoadingPaths.contains(projectPath) else {
+            return
+        }
+
+        insightsLoadingPaths.insert(projectPath)
+        Task { [weak self] in
+            guard let self else { return }
+            let insights = await projectInsightsService.fetch(projectPath: projectPath)
+            await MainActor.run {
+                self.projectInsightsByPath[projectPath] = insights
+                self.insightsLoadingPaths.remove(projectPath)
+            }
         }
     }
 

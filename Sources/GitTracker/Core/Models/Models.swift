@@ -152,6 +152,38 @@ struct ProjectMetrics: Identifiable, Hashable, Sendable {
     }
 }
 
+struct ProjectInsights: Hashable, Sendable {
+    var projectPath: String
+    var branchName: String?
+    var commitsLast7Days: Int
+    var commitsLast30Days: Int
+    var averageCommitDeltaLast30Days: Int
+    var averageFilesPerCommitLast30Days: Double
+    var activeCommitDaysLast30Days: Int
+    var workingTreeChangedFiles: Int
+    var workingTreeAddedLines: Int
+    var workingTreeRemovedLines: Int
+    var available: Bool
+    var errorMessage: String?
+
+    static func unavailable(projectPath: String, errorMessage: String? = nil) -> ProjectInsights {
+        ProjectInsights(
+            projectPath: projectPath,
+            branchName: nil,
+            commitsLast7Days: 0,
+            commitsLast30Days: 0,
+            averageCommitDeltaLast30Days: 0,
+            averageFilesPerCommitLast30Days: 0,
+            activeCommitDaysLast30Days: 0,
+            workingTreeChangedFiles: 0,
+            workingTreeAddedLines: 0,
+            workingTreeRemovedLines: 0,
+            available: false,
+            errorMessage: errorMessage
+        )
+    }
+}
+
 struct AlertState: Hashable, Sendable {
     var projectPath: String
     var isBreached: Bool
