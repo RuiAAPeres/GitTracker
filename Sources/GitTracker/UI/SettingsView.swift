@@ -16,8 +16,8 @@ struct SettingsView: View {
                     Label("Rules", systemImage: "slider.horizontal.3")
                 }
         }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 14)
+        .padding(.horizontal, 22)
+        .padding(.vertical, 16)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 }
@@ -322,58 +322,146 @@ private struct RulesSettingsTab: View {
     @ObservedObject var store: AppStore
 
     var body: some View {
-        Form {
-            Section("Global thresholds") {
-                ThresholdEditor(rule: store.settings.globalThreshold) { updated in
-                    store.setGlobalThreshold(updated)
-                }
-            }
-
-            Section("Info") {
-                Text("Default values are +200 / -200 / total 300.")
-                Text("Projects can override these values from the Projects tab.")
-            }
-
-            Section("Notifications") {
-                Toggle("Enable breach notifications", isOn: Binding(
-                    get: { store.settings.notificationsEnabled },
-                    set: { store.setNotificationsEnabled($0) }
-                ))
-                Text("Notifications trigger only when a project transitions from non-breached to breached.")
-            }
-
-            Section("Startup") {
-                Toggle("Start at login", isOn: Binding(
-                    get: { store.settings.launchAtLogin },
-                    set: { store.setLaunchAtLogin($0) }
-                ))
-                .disabled(!store.launchAtLoginSupported)
-
-                if !store.launchAtLoginSupported {
-                    Text("Available when running from an app bundle.")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                }
-            }
-
-            Section("Refresh") {
-                Picker("Refresh interval", selection: Binding(
-                    get: { store.settings.refreshInterval },
-                    set: { store.setRefreshInterval($0) }
-                )) {
-                    ForEach(RefreshInterval.allCases, id: \.self) { interval in
-                        Text(interval.label).tag(interval)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                SettingsSectionCard("Global thresholds") {
+                    ThresholdEditor(rule: store.settings.globalThreshold) { updated in
+                        store.setGlobalThreshold(updated)
                     }
                 }
-                .labelsHidden()
-                .pickerStyle(.menu)
+
+                SettingsSectionCard("Info") {
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text("Default values are +200 / -200 / total 300.")
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.vertical, 10)
+
+                        Divider()
+
+                        Text("Projects can override these values from the Projects tab.")
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.vertical, 10)
+                    }
+                    .foregroundStyle(.secondary)
+                }
+
+                SettingsSectionCard("Notifications") {
+                    SettingToggleRow(
+                        title: "Enable breach notifications",
+                        subtitle: "Notifications trigger only when a project transitions from non-breached to breached.",
+                        isOn: Binding(
+                            get: { store.settings.notificationsEnabled },
+                            set: { store.setNotificationsEnabled($0) }
+                        )
+                    )
+                }
+
+                SettingsSectionCard("Startup") {
+                    SettingToggleRow(
+                        title: "Start at login",
+                        subtitle: store.launchAtLoginSupported
+                            ? "Launch GitTracker automatically when you sign in."
+                            : "Available when running from an app bundle.",
+                        isOn: Binding(
+                            get: { store.settings.launchAtLogin },
+                            set: { store.setLaunchAtLogin($0) }
+                        )
+                    )
+                    .disabled(!store.launchAtLoginSupported)
+                }
+
+                SettingsSectionCard("Refresh") {
+                    HStack(spacing: 12) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Refresh interval")
+                                .font(.system(size: 14, weight: .semibold))
+                            Text("How often tracked projects are re-evaluated.")
+                                .font(.system(size: 12))
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Spacer(minLength: 10)
+
+                        Picker("Refresh interval", selection: Binding(
+                            get: { store.settings.refreshInterval },
+                            set: { store.setRefreshInterval($0) }
+                        )) {
+                            ForEach(RefreshInterval.allCases, id: \.self) { interval in
+                                Text(interval.label).tag(interval)
+                            }
+                        }
+                        .labelsHidden()
+                        .pickerStyle(.menu)
+                        .frame(width: 180)
+                    }
+                }
+
+                SettingsSectionCard("Current status") {
+                    HStack {
+                        Text("\(store.breachedCount) breached")
+                            .foregroundStyle(store.breachedCount > 0 ? .red : .primary)
+                        Spacer()
+                        Text("\(store.projectRows.count) tracked")
+                            .foregroundStyle(.secondary)
+                    }
+                    .font(.system(size: 14, weight: .semibold))
+                }
+            }
+            .frame(maxWidth: 760, alignment: .leading)
+            .padding(.vertical, 4)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+}
+
+private struct SettingsSectionCard<Content: View>: View {
+    let title: String
+    @ViewBuilder var content: Content
+
+    init(_ title: String, @ViewBuilder content: () -> Content) {
+        self.title = title
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.secondary)
+                .textCase(.uppercase)
+                .tracking(0.4)
+
+            VStack(alignment: .leading, spacing: 10) {
+                content
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(.quaternary.opacity(0.28), in: RoundedRectangle(cornerRadius: 12))
+        }
+    }
+}
+
+private struct SettingToggleRow: View {
+    let title: String
+    let subtitle: String
+    @Binding var isOn: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                Text(title)
+                    .font(.system(size: 14, weight: .semibold))
+                Spacer()
+                Toggle("", isOn: $isOn)
+                    .labelsHidden()
             }
 
-            Section("Current status") {
-                Text("\(store.breachedCount) breached / \(store.projectRows.count) tracked")
-            }
+            Divider()
+
+            Text(subtitle)
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
         }
-        .formStyle(.grouped)
     }
 }
 
@@ -391,7 +479,7 @@ private struct ThresholdEditor: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 6) {
             thresholdRow(title: "Max +++", value: $maxAdded)
             thresholdRow(title: "Max ---", value: $maxRemoved)
             thresholdRow(title: "Max total", value: $maxTotal)
@@ -402,15 +490,23 @@ private struct ThresholdEditor: View {
     }
 
     private func thresholdRow(title: String, value: Binding<Int>) -> some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 12) {
             Text(title)
                 .frame(width: 90, alignment: .leading)
-            Stepper(value: value, in: 0...100_000, step: 10) {
-                Text("\(value.wrappedValue)")
-                    .frame(width: 80, alignment: .leading)
-                    .monospacedDigit()
-            }
+                .font(.system(size: 14, weight: .semibold))
+
+            Text("\(value.wrappedValue)")
+                .frame(width: 70, alignment: .trailing)
+                .monospacedDigit()
+                .font(.system(size: 18, weight: .semibold))
+
+            Spacer()
+
+            Stepper("", value: value, in: 0...100_000, step: 10)
+                .labelsHidden()
+                .fixedSize()
         }
+        .padding(.vertical, 4)
     }
 
     private func apply() {
