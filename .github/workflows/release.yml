@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -59,14 +60,24 @@ jobs:
   update-homebrew-tap:
     name: Update Homebrew Tap
     needs: release
-    if: ${{ secrets.HOMEBREW_TAP_TOKEN != '' }}
     runs-on: ubuntu-latest
 
     steps:
+      - name: Check tap token
+        id: tap-token
+        run: |
+          if [ -z "${{ secrets.HOMEBREW_TAP_TOKEN }}" ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Checkout app repo
+        if: ${{ steps.tap-token.outputs.enabled == 'true' }}
         uses: actions/checkout@v4
 
       - name: Download checksums
+        if: ${{ steps.tap-token.outputs.enabled == 'true' }}
         uses: actions/download-artifact@v4
         with:
           pattern: GitTracker-*
@@ -74,6 +85,7 @@ jobs:
           merge-multiple: true
 
       - name: Checkout Homebrew tap repo
+        if: ${{ steps.tap-token.outputs.enabled == 'true' }}
         uses: actions/checkout@v4
         with:
           repository: RuiAAPeres/homebrew-gittracker
@@ -81,6 +93,7 @@ jobs:
           path: tap
 
       - name: Update cask
+        if: ${{ steps.tap-token.outputs.enabled == 'true' }}
         run: |
           ARM_SHA="$(cat release-assets/GitTracker-arm64.sha256)"
           INTEL_SHA="$(cat release-assets/GitTracker-x86_64.sha256)"
@@ -92,6 +105,7 @@ jobs:
             --output "tap/Casks/gittracker.rb"
 
       - name: Commit and push cask update
+        if: ${{ steps.tap-token.outputs.enabled == 'true' }}
         run: |
           cd tap
           if git diff --quiet; then
@@ -103,4 +117,3 @@ jobs:
           git add Casks/gittracker.rb
           git commit -m "gittracker ${GITHUB_REF_NAME#v}"
           git push
-
