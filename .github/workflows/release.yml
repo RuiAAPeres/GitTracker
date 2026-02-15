@@ -115,7 +115,7 @@ jobs:
         if: ${{ steps.tap-token.outputs.enabled == 'true' }}
         run: |
           cd tap
-          if git diff --quiet; then
+          if [ -z "$(git status --porcelain)" ]; then
             echo "No Homebrew cask changes to commit."
             exit 0
           fi
