@@ -11,29 +11,29 @@ permissions:
 
 jobs:
   build:
-    name: Build (${{ matrix.arch }})
-    runs-on: ${{ matrix.runner }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - runner: macos-14
-            arch: arm64
-          - runner: macos-13
-            arch: x86_64
+    name: Build app artifacts
+    runs-on: macos-14
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Package app bundle
-        run: ./scripts/package-app.sh "${GITHUB_REF_NAME#v}" "${{ matrix.arch }}"
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Package arm64 bundle
+        run: ./scripts/package-app.sh "${GITHUB_REF_NAME#v}" "arm64"
+
+      - name: Package x86_64 bundle
+        run: ./scripts/package-app.sh "${GITHUB_REF_NAME#v}" "x86_64"
 
       - name: Upload release artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: GitTracker-${{ matrix.arch }}
-          path: dist/${{ matrix.arch }}/*
+          name: GitTracker-release-assets
+          path: dist/*/*
           if-no-files-found: error
 
   release:
@@ -47,7 +47,7 @@ jobs:
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
-          pattern: GitTracker-*
+          pattern: GitTracker-release-assets
           path: release-assets
           merge-multiple: true
 
@@ -80,7 +80,7 @@ jobs:
         if: ${{ steps.tap-token.outputs.enabled == 'true' }}
         uses: actions/download-artifact@v4
         with:
-          pattern: GitTracker-*
+          pattern: GitTracker-release-assets
           path: release-assets
           merge-multiple: true
 

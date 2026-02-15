@@ -14,8 +14,8 @@ EXECUTABLE_PATH="$APP_DIR/Contents/MacOS/GitTracker"
 ZIP_PATH="$DIST_DIR/GitTracker-${ARCH}.zip"
 SHA_PATH="$DIST_DIR/GitTracker-${ARCH}.sha256"
 
-swift build -c release >/dev/null
-BIN_DIR="$(swift build -c release --show-bin-path)"
+swift build -c release --arch "$ARCH" >/dev/null
+BIN_DIR="$(swift build -c release --arch "$ARCH" --show-bin-path)"
 BIN_PATH="$BIN_DIR/GitTracker"
 
 if [[ ! -x "$BIN_PATH" ]]; then
