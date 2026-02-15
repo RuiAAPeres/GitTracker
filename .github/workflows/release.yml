@@ -95,8 +95,15 @@ jobs:
       - name: Update cask
         if: ${{ steps.tap-token.outputs.enabled == 'true' }}
         run: |
-          ARM_SHA="$(cat release-assets/GitTracker-arm64.sha256)"
-          INTEL_SHA="$(cat release-assets/GitTracker-x86_64.sha256)"
+          ARM_SHA_FILE="$(find release-assets -name 'GitTracker-arm64.sha256' | head -n 1)"
+          INTEL_SHA_FILE="$(find release-assets -name 'GitTracker-x86_64.sha256' | head -n 1)"
+          if [ -z "$ARM_SHA_FILE" ] || [ -z "$INTEL_SHA_FILE" ]; then
+            echo "Could not locate checksum files in release-assets"
+            find release-assets -maxdepth 4 -type f
+            exit 1
+          fi
+          ARM_SHA="$(cat "$ARM_SHA_FILE")"
+          INTEL_SHA="$(cat "$INTEL_SHA_FILE")"
           ./scripts/update-homebrew-cask.sh \
             --version "${GITHUB_REF_NAME#v}" \
             --arm-sha "$ARM_SHA" \
