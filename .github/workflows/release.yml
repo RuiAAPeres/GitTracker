@@ -1,0 +1,106 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-14
+            arch: arm64
+          - runner: macos-13
+            arch: x86_64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Package app bundle
+        run: ./scripts/package-app.sh "${GITHUB_REF_NAME#v}" "${{ matrix.arch }}"
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: GitTracker-${{ matrix.arch }}
+          path: dist/${{ matrix.arch }}/*
+          if-no-files-found: error
+
+  release:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: GitTracker-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-assets/*.zip
+          generate_release_notes: true
+
+  update-homebrew-tap:
+    name: Update Homebrew Tap
+    needs: release
+    if: ${{ secrets.HOMEBREW_TAP_TOKEN != '' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout app repo
+        uses: actions/checkout@v4
+
+      - name: Download checksums
+        uses: actions/download-artifact@v4
+        with:
+          pattern: GitTracker-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: Checkout Homebrew tap repo
+        uses: actions/checkout@v4
+        with:
+          repository: RuiAAPeres/homebrew-gittracker
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: tap
+
+      - name: Update cask
+        run: |
+          ARM_SHA="$(cat release-assets/GitTracker-arm64.sha256)"
+          INTEL_SHA="$(cat release-assets/GitTracker-x86_64.sha256)"
+          ./scripts/update-homebrew-cask.sh \
+            --version "${GITHUB_REF_NAME#v}" \
+            --arm-sha "$ARM_SHA" \
+            --intel-sha "$INTEL_SHA" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --output "tap/Casks/gittracker.rb"
+
+      - name: Commit and push cask update
+        run: |
+          cd tap
+          if git diff --quiet; then
+            echo "No Homebrew cask changes to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Casks/gittracker.rb
+          git commit -m "gittracker ${GITHUB_REF_NAME#v}"
+          git push
+

@@ -21,6 +21,17 @@ GitTracker is a native macOS menu bar app for tracking per-project uncommitted g
 - macOS 14+
 - Xcode 16+ or Swift 6 toolchain
 
+## Install with Homebrew
+```bash
+brew tap RuiAAPeres/gittracker
+brew install --cask gittracker
+```
+
+## Update to latest release
+```bash
+brew upgrade --cask gittracker
+```
+
 ## Build and run
 ```bash
 swift run GitTracker
@@ -39,3 +50,10 @@ swift test
    - wildcard root: `/Users/you/Code/*`
 4. Adjust thresholds and refresh cadence.
 5. Watch the menu bar icon/title for breach count and open the menu for per-project details.
+
+## Automated releases
+- Create and push a tag like `v1.0.0`.
+- The release workflow will:
+  - build zipped app bundles for `arm64` and `x86_64`
+  - publish those artifacts in a GitHub Release
+  - update `RuiAAPeres/homebrew-gittracker` cask (if `HOMEBREW_TAP_TOKEN` secret is set)
