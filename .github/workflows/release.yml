@@ -51,6 +51,11 @@ jobs:
           path: release-assets
           merge-multiple: true
 
+      - name: Collect zip assets
+        run: |
+          find release-assets -name "*.zip" -type f -exec cp {} release-assets/ \;
+          ls -la release-assets
+
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
