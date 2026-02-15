@@ -26,7 +26,8 @@ struct SettingsRepositoryTests {
             ],
             globalThreshold: ThresholdRule(maxAddedLines: 200, maxRemovedLines: 200, maxTotalDelta: 300),
             notificationsEnabled: false,
-            refreshInterval: .fiveMinutes
+            refreshInterval: .fiveMinutes,
+            launchAtLogin: true
         )
 
         repository.save(settings)

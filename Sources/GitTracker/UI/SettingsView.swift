@@ -342,6 +342,20 @@ private struct RulesSettingsTab: View {
                 Text("Notifications trigger only when a project transitions from non-breached to breached.")
             }
 
+            Section("Startup") {
+                Toggle("Start at login", isOn: Binding(
+                    get: { store.settings.launchAtLogin },
+                    set: { store.setLaunchAtLogin($0) }
+                ))
+                .disabled(!store.launchAtLoginSupported)
+
+                if !store.launchAtLoginSupported {
+                    Text("Available when running from an app bundle.")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                }
+            }
+
             Section("Refresh") {
                 Picker("Refresh interval", selection: Binding(
                     get: { store.settings.refreshInterval },

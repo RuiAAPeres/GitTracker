@@ -15,6 +15,7 @@ final class AppStore: ObservableObject {
     private let gitMetricsService: GitMetricsFetching
     private let alertEvaluator: AlertEvaluating
     private let notificationService: NotificationSending
+    private let loginItemService: LoginItemManaging
 
     private var refreshTask: Task<Void, Never>?
     private var hasStarted = false
@@ -24,13 +25,15 @@ final class AppStore: ObservableObject {
         projectResolver: ProjectResolving,
         gitMetricsService: GitMetricsFetching,
         alertEvaluator: AlertEvaluating,
-        notificationService: NotificationSending
+        notificationService: NotificationSending,
+        loginItemService: LoginItemManaging
     ) {
         self.settingsRepository = settingsRepository
         self.projectResolver = projectResolver
         self.gitMetricsService = gitMetricsService
         self.alertEvaluator = alertEvaluator
         self.notificationService = notificationService
+        self.loginItemService = loginItemService
 
         self.settings = .default
         self.resolvedProjects = []
@@ -50,7 +53,8 @@ final class AppStore: ObservableObject {
             projectResolver: ProjectResolver(),
             gitMetricsService: GitMetricsService(),
             alertEvaluator: AlertEvaluator(),
-            notificationService: NotificationService()
+            notificationService: NotificationService(),
+            loginItemService: LoginItemService()
         )
     }
 
@@ -74,6 +78,10 @@ final class AppStore: ObservableObject {
 
     var menuTitle: String {
         "GT"
+    }
+
+    var launchAtLoginSupported: Bool {
+        loginItemService.supportsConfiguration
     }
 
     var projectRows: [ProjectRow] {
@@ -251,6 +259,20 @@ final class AppStore: ObservableObject {
         settings.refreshInterval = interval
         persistSettingsAndRefreshLoop()
         Task { await refreshNow(manual: false) }
+    }
+
+    func setLaunchAtLogin(_ enabled: Bool) {
+        guard settings.launchAtLogin != enabled else {
+            return
+        }
+
+        do {
+            try loginItemService.setEnabled(enabled)
+            settings.launchAtLogin = enabled
+            settingsRepository.save(settings)
+        } catch {
+            return
+        }
     }
 
     func revealProjectInFinder(path: String) {

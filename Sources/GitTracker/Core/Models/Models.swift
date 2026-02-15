@@ -203,12 +203,45 @@ struct AppSettings: Hashable, Sendable, Codable {
     var globalThreshold: ThresholdRule
     var notificationsEnabled: Bool
     var refreshInterval: RefreshInterval
+    var launchAtLogin: Bool
+
+    private enum CodingKeys: String, CodingKey {
+        case projectSpecs
+        case globalThreshold
+        case notificationsEnabled
+        case refreshInterval
+        case launchAtLogin
+    }
+
+    init(
+        projectSpecs: [ProjectSpec],
+        globalThreshold: ThresholdRule,
+        notificationsEnabled: Bool,
+        refreshInterval: RefreshInterval,
+        launchAtLogin: Bool
+    ) {
+        self.projectSpecs = projectSpecs
+        self.globalThreshold = globalThreshold
+        self.notificationsEnabled = notificationsEnabled
+        self.refreshInterval = refreshInterval
+        self.launchAtLogin = launchAtLogin
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        projectSpecs = try container.decodeIfPresent([ProjectSpec].self, forKey: .projectSpecs) ?? []
+        globalThreshold = try container.decodeIfPresent(ThresholdRule.self, forKey: .globalThreshold) ?? .v1Default
+        notificationsEnabled = try container.decodeIfPresent(Bool.self, forKey: .notificationsEnabled) ?? true
+        refreshInterval = try container.decodeIfPresent(RefreshInterval.self, forKey: .refreshInterval) ?? .twoMinutes
+        launchAtLogin = try container.decodeIfPresent(Bool.self, forKey: .launchAtLogin) ?? false
+    }
 
     static let `default` = AppSettings(
         projectSpecs: [],
         globalThreshold: .v1Default,
         notificationsEnabled: true,
-        refreshInterval: .twoMinutes
+        refreshInterval: .twoMinutes,
+        launchAtLogin: false
     )
 }
 
