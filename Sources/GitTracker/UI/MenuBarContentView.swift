@@ -121,6 +121,8 @@ struct MenuBarContentView: View {
     }
 
     private func projectAttributedTitle(for row: ProjectRow) -> AttributedString {
+        let hasNoChanges = row.status == .ok && row.addedLines == 0 && row.removedLines == 0
+
         var marker = AttributedString(row.isBreached ? "⚠︎" : "•")
         if row.isBreached {
             marker.foregroundColor = Color(nsColor: MenuBarPalette.warning)
@@ -128,6 +130,16 @@ struct MenuBarContentView: View {
 
         let markerSpacer = AttributedString(" ")
         let title = AttributedString("\(row.name)  ")
+
+        marker.append(markerSpacer)
+        marker.append(title)
+
+        if hasNoChanges {
+            var checkmark = AttributedString("✓")
+            checkmark.foregroundColor = Color(nsColor: MenuBarPalette.success)
+            marker.append(checkmark)
+            return marker
+        }
 
         var plus = AttributedString("+\(row.addedLines)")
         plus.foregroundColor = .green
@@ -137,8 +149,6 @@ struct MenuBarContentView: View {
         var minus = AttributedString("-\(row.removedLines)")
         minus.foregroundColor = .red
 
-        marker.append(markerSpacer)
-        marker.append(title)
         marker.append(plus)
         marker.append(spacer)
         marker.append(minus)
