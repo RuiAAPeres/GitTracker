@@ -62,6 +62,10 @@ cat >"$PLIST_PATH" <<EOF
 </plist>
 EOF
 
+# Re-sign the bundle so Gatekeeper can validate it after Homebrew install.
+codesign --force --deep --sign - "$APP_DIR"
+codesign --verify --deep --strict --verbose=2 "$APP_DIR"
+
 rm -f "$ZIP_PATH" "$SHA_PATH"
 ditto -c -k --sequesterRsrc --keepParent "$APP_DIR" "$ZIP_PATH"
 shasum -a 256 "$ZIP_PATH" | awk '{print $1}' >"$SHA_PATH"
